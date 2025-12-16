@@ -1,40 +1,625 @@
+<!doctype html>
+<html lang="en">
 <head>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <script type="importmap">
-      {
-        "imports": {
-          "@material/web/": "https://esm.run/@material/web/"
-        }
-      }
-    </script>
-    <script type="module">
-      import '@material/web/all.js';
-      import {styles as typescaleStyles} from '@material/web/typography/md-typescale-styles.js';
-  
-      document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
-    </script>
-  </head>
-  <body>
-    <h1 class="md-typescale-display-medium">Hello Material!</h1>
-    <form>
-      <p class="md-typescale-body-medium">Check out these controls in a form!</p>
-      <md-checkbox></md-checkbox>
-      <div>
-        <md-radio name="group"></md-radio>
-        <md-radio name="group"></md-radio>
-        <md-radio name="group"></md-radio>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usrah Attendance Health Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #0f3d63;
+      --border: #d9d9d9;
+      --text: #0e0e0e;
+      --muted: #6b6b6b;
+      --bg: #fdfdfc;
+      --present: #0f3d63;
+      --absent: #fdfdfc;
+      --excused: #c7d6e5;
+      --not-reported: #eef2f5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 20;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    nav a {
+      margin-left: 18px;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    main {
+      padding: 20px 24px 60px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #fff;
+      min-height: 100vh;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      text-align: center;
+    }
+    h2 {
+      margin: 28px 0 12px;
+      font-size: 18px;
+      letter-spacing: 0.2px;
+    }
+    p {
+      margin: 0 0 10px;
+      color: var(--muted);
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 20px 0 30px;
+    }
+    .metric {
+      padding: 12px;
+      background: #fff;
+    }
+    .metric.good {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+    .metric.bad {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .metric.neutral {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+    .metric .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+    }
+    .metric .value {
+      font-size: 22px;
+      margin-top: 6px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .grid-wrapper {
+      overflow: visible;
+      background: #fff;
+    }
+    .grid {
+      display: grid;
+      min-width: 720px;
+      border-collapse: collapse;
+      grid-template-columns: 220px repeat(var(--week-count), 50px);
+    }
+    .grid .cell {
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      padding: 10px;
+      height: 44px;
+      font-size: 13px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      background: #fff;
+    }
+    .grid .cell.present { background: green; }
+    .grid .cell.absent { background: rgb(255, 91, 91); }
+    .grid .cell.excused { background: var(--excused); }
+    .grid .cell.not-reported { background: white; }
+    .grid .cell:hover { opacity: 0.7; cursor: pointer; }
+    .grid .cell.header {
+      position: sticky;
+      top: 0;
+      background: none;
+      font-weight: 700;
+      z-index: 5;
+      border: none;
+      padding: 0;
+      margin: 0;
+      text-align: center;
+      transform: rotate(-30deg);
+    }
+    .grid .cell.header:first-child {
+      transform: none;
+      text-align: left;
+    }
+    .grid .cell.name {
+      position: sticky;
+      left: 0;
+      z-index: 4;
+      background: none;
+      font-weight: 600;
+      border-right: none;
+    }
+    .grid .cell.name.inactive {
+      color: var(--muted);
+      text-decoration: line-through;
+      border-right: none;
+    }
+    .summary-row {
+      background: #f5f7f9;
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+    }
+    .usra-header {
+      background: #e0e0e0;
+      text-align: center;
+      font-weight: bold;
+      padding: 8px;
+    }
+    .summary-text {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .trend {
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .muted { color: var(--muted); }
+    .verified {
+      display: inline-block;
+      background: #1da1f2;
+      color: white;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      text-align: center;
+      font-size: 10px;
+      line-height: 14px;
+      margin-left: 4px;
+    }
+    .warning {
+      border: 1px solid #d9a441;
+      background: #fff8ea;
+      color: #6b4a00;
+      padding: 12px;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+    .empty {
+      padding: 16px;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      background: #fff;
+    }
+    #submit {
+      margin-top: 40px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    label {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    input, select, button {
+      font: inherit;
+    }
+    input, select {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      min-width: 200px;
+      background: #fff;
+    }
+    button {
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    button.secondary {
+      background: #fff;
+      color: var(--accent);
+    }
+    button:disabled {
+      background: #e0e7ee;
+      border-color: #e0e7ee;
+      color: #8a9aaa;
+      cursor: not-allowed;
+    }
+    .error {
+      color: #b00020;
+      font-size: 13px;
+    }
+    .success {
+      color: #0f6232;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+    .member-card {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+    .member-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .status-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .status-buttons button {
+      border-color: var(--border);
+      background: #f7f9fb;
+      color: var(--text);
+      padding: 8px 10px;
+      font-weight: 600;
+    }
+    .status-buttons button.active {
+      border-color: var(--accent);
+      background: #e7eff7;
+      color: var(--accent);
+    }
+    .toast {
+      padding: 10px 12px;
+      border: 1px solid #7aa870;
+      background: #f1f8f1;
+      color: #21421f;
+      display: inline-block;
+      margin-top: 10px;
+    }
+    .stack {
+      display: grid;
+      gap: 6px;
+    }
+    @media (max-width: 720px) {
+      header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      nav a { margin-left: 0; margin-right: 12px; }
+      .grid { grid-template-columns: 160px repeat(var(--week-count), 1fr); }
+      .grid .cell { padding: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section id="dashboard">
+      <h1>Houston Usrah Health</h1>
+      <p>Visual grid to spot decay, weak usrahs, and non-reporting groups. Data below is sample; hook up to your Google Sheet to go live.</p>
+      <div id="warning" class="warning" style="display:none;"></div>
+      <div class="metrics" id="metrics"></div>
+      <div class="grid-wrapper" id="grid-wrapper">
+        <div class="empty" id="empty-state" style="display:none;">No attendance submitted yet. Weeks still appear for context.</div>
+        <div class="grid" id="grid"></div>
       </div>
-  
-      <md-outlined-text-field label="Favorite color" value="Purple"></md-outlined-text-field>
-  
-      <md-outlined-button type="reset">Reset</md-outlined-button>
-    </form>
-    <style>
-      form {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
+    </section>
+  </main>
+  <script>
+    // Sample data standing in for Google Sheets responses.
+    const DATA = {
+      settings: { windowWeeks: 12 },
+      usrah: [
+        { usrah_id: "u1", usrah_name: "North River", submission_code: "NR-8432" },
+        { usrah_id: "u2", usrah_name: "East Grove", submission_code: "EG-1923" },
+        { usrah_id: "u3", usrah_name: "Westfield", submission_code: "WF-5520" }
+      ],
+      people: [
+        { person_id: "p1", name: "Aisha Rahman", usrah_id: "u1", active: true },
+        { person_id: "p2", name: "Fatimah Khan", usrah_id: "u1", active: true },
+        { person_id: "p3", name: "Yusuf Malik", usrah_id: "u1", active: true },
+        { person_id: "p4", name: "Ismail Odeh", usrah_id: "u2", active: true },
+        { person_id: "p5", name: "Maryam Said", usrah_id: "u2", active: true },
+        { person_id: "p6", name: "Nadia Idris", usrah_id: "u2", active: false },
+        { person_id: "p7", name: "Omar Saleh", usrah_id: "u3", active: true },
+        { person_id: "p8", name: "Sarah Idris", usrah_id: "u3", active: true },
+        { person_id: "p9", name: "Bilal Karim", usrah_id: "u3", active: true }
+      ],
+      weeks: [
+        { week_id: "2025-W01", start_date: "2025-01-06", end_date: "2025-01-12" },
+        { week_id: "2025-W02", start_date: "2025-01-13", end_date: "2025-01-19" },
+        { week_id: "2025-W03", start_date: "2025-01-20", end_date: "2025-01-26" },
+        { week_id: "2025-W04", start_date: "2025-01-27", end_date: "2025-02-02" },
+        { week_id: "2025-W05", start_date: "2025-02-03", end_date: "2025-02-09" },
+        { week_id: "2025-W06", start_date: "2025-02-10", end_date: "2025-02-16" },
+        { week_id: "2025-W07", start_date: "2025-02-17", end_date: "2025-02-23" },
+        { week_id: "2025-W08", start_date: "2025-02-24", end_date: "2025-03-02" },
+        { week_id: "2025-W09", start_date: "2025-03-03", end_date: "2025-03-09" },
+        { week_id: "2025-W10", start_date: "2025-03-10", end_date: "2025-03-16" },
+        { week_id: "2025-W11", start_date: "2025-03-17", end_date: "2025-03-23" },
+        { week_id: "2025-W12", start_date: "2025-03-24", end_date: "2025-03-30" }
+      ],
+      attendance: [
+        { person_id: "p1", week_id: "2025-W09", status: "present", reported_by: "u1", reported_at: "2025-03-04" },
+        { person_id: "p1", week_id: "2025-W10", status: "present", reported_by: "u1", reported_at: "2025-03-11" },
+        { person_id: "p1", week_id: "2025-W11", status: "absent", reported_by: "u1", reported_at: "2025-03-18" },
+        { person_id: "p1", week_id: "2025-W12", status: "present", reported_by: "u1", reported_at: "2025-03-25" },
+        { person_id: "p2", week_id: "2025-W09", status: "absent", reported_by: "u1", reported_at: "2025-03-04" },
+        { person_id: "p2", week_id: "2025-W10", status: "present", reported_by: "u1", reported_at: "2025-03-11" },
+        { person_id: "p2", week_id: "2025-W11", status: "present", reported_by: "u1", reported_at: "2025-03-18" },
+        { person_id: "p3", week_id: "2025-W10", status: "excused", reported_by: "u1", reported_at: "2025-03-11" },
+        { person_id: "p3", week_id: "2025-W11", status: "present", reported_by: "u1", reported_at: "2025-03-18" },
+        { person_id: "p4", week_id: "2025-W09", status: "present", reported_by: "u2", reported_at: "2025-03-04" },
+        { person_id: "p4", week_id: "2025-W10", status: "present", reported_by: "u2", reported_at: "2025-03-11" },
+        { person_id: "p4", week_id: "2025-W11", status: "present", reported_by: "u2", reported_at: "2025-03-18" },
+        { person_id: "p5", week_id: "2025-W09", status: "present", reported_by: "u2", reported_at: "2025-03-04" },
+        { person_id: "p5", week_id: "2025-W10", status: "absent", reported_by: "u2", reported_at: "2025-03-11" },
+        { person_id: "p5", week_id: "2025-W11", status: "excused", reported_by: "u2", reported_at: "2025-03-18" },
+        { person_id: "p7", week_id: "2025-W10", status: "present", reported_by: "u3", reported_at: "2025-03-11" },
+        { person_id: "p7", week_id: "2025-W11", status: "present", reported_by: "u3", reported_at: "2025-03-18" },
+        { person_id: "p7", week_id: "2025-W12", status: "present", reported_by: "u3", reported_at: "2025-03-25" },
+        { person_id: "p8", week_id: "2025-W10", status: "absent", reported_by: "u3", reported_at: "2025-03-11" },
+        { person_id: "p8", week_id: "2025-W11", status: "absent", reported_by: "u3", reported_at: "2025-03-18" },
+        { person_id: "p9", week_id: "2025-W10", status: "present", reported_by: "u3", reported_at: "2025-03-11" },
+        { person_id: "p9", week_id: "2025-W11", status: "present", reported_by: "u3", reported_at: "2025-03-18" },
+        { person_id: "p9", week_id: "2025-W12", status: "excused", reported_by: "u3", reported_at: "2025-03-25" }
+      ]
+    };
+
+    // Derived maps for quick lookups.
+    const PEOPLE_BY_ID = new Map(DATA.people.map(p => [p.person_id, p]));
+    const USRAH_BY_ID = new Map(DATA.usrah.map(u => [u.usrah_id, u]));
+    const CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code.toLowerCase(), u]));
+
+    const visibleWeeks = DATA.weeks.slice(-DATA.settings.windowWeeks);
+    const visibleWeekIds = new Set(visibleWeeks.map(w => w.week_id));
+    const weekOptions = [...visibleWeeks].reverse(); // latest first for selection
+
+    function formatPercent(n) {
+      if (Number.isNaN(n)) return "0%";
+      return `${Math.round(n * 100)}%`;
+    }
+
+    function computeMetrics() {
+      const activePeople = DATA.people.filter(p => p.active);
+      const recentWeeks = visibleWeeks.slice(-4).map(w => w.week_id);
+      const attendance = DATA.attendance.filter(a => visibleWeekIds.has(a.week_id));
+
+      let present = 0;
+      let absent = 0;
+      attendance.forEach(a => {
+        if (a.status === "present") present += 1;
+        if (a.status === "absent") absent += 1;
+      });
+      const overallRate = present + absent === 0 ? 0 : present / (present + absent);
+
+      const completenessPairsExpected = DATA.usrah.length * visibleWeeks.length;
+      const usrahWeekReported = new Set(attendance.map(a => `${a.reported_by}_${a.week_id}`));
+      const reportingCompleteness = completenessPairsExpected === 0 ? 0 : usrahWeekReported.size / completenessPairsExpected;
+
+      const zeroAttendanceMembers = activePeople.filter(person => {
+        const records = attendance.filter(a => a.person_id === person.person_id && recentWeeks.includes(a.week_id));
+        const hadPresence = records.some(r => r.status === "present");
+        return !hadPresence && recentWeeks.length > 0;
+      });
+
+      const streakMembers = activePeople.filter(person => {
+        const records = attendance
+          .filter(a => a.person_id === person.person_id)
+          .sort((a, b) => visibleWeeks.findIndex(w => w.week_id === a.week_id) - visibleWeeks.findIndex(w => w.week_id === b.week_id));
+        let best = 0;
+        let current = 0;
+        visibleWeeks.forEach(w => {
+          const record = records.find(r => r.week_id === w.week_id);
+          if (record && record.status === "present") {
+            current += 1;
+            best = Math.max(best, current);
+          } else {
+            current = 0;
+          }
+        });
+        return best >= 3;
+      });
+
+      return {
+        overallRate,
+        activeMembers: activePeople.length,
+        usrahCount: DATA.usrah.length,
+        reportingCompleteness,
+        zeroAttendanceMembers,
+        streakMembers
+      };
+    }
+
+    function getMetricClass(value, type) {
+      if (type === 'rate') {
+        if (value > 0.8) return 'good';
+        if (value < 0.5) return 'bad';
+        return 'neutral';
       }
-    </style>
-  </body>
+      if (type === 'zero') {
+        return value === 0 ? 'good' : 'bad';
+      }
+      if (type === 'streak') {
+        return value > 0 ? 'good' : 'neutral';
+      }
+      return 'neutral';
+    }
+
+    function renderMetrics() {
+      const metricsEl = document.getElementById("metrics");
+      const m = computeMetrics();
+      const overallClass = getMetricClass(m.overallRate, 'rate');
+      const reportingClass = getMetricClass(m.reportingCompleteness, 'rate');
+      const zeroClass = getMetricClass(m.zeroAttendanceMembers.length, 'zero');
+      const streakClass = getMetricClass(m.streakMembers.length, 'streak');
+      metricsEl.innerHTML = `
+        <div class="metric ${overallClass}">
+          <div class="label">Overall attendance</div>
+          <div class="value">${formatPercent(m.overallRate)}</div>
+        </div>
+        <div class="metric neutral">
+          <div class="label">Active members</div>
+          <div class="value">${m.activeMembers}</div>
+        </div>
+        <div class="metric neutral">
+          <div class="label">Usrahs</div>
+          <div class="value">${m.usrahCount}</div>
+        </div>
+        <div class="metric ${reportingClass}">
+          <div class="label">Reporting completeness</div>
+          <div class="value">${formatPercent(m.reportingCompleteness)}</div>
+        </div>
+        <div class="metric ${zeroClass}">
+          <div class="label">0 attendance last 4 weeks</div>
+          <div class="value">${m.zeroAttendanceMembers.length}</div>
+          <div class="badge" title="${m.zeroAttendanceMembers.map(p => p.name).join(", ") || "None"}">${m.zeroAttendanceMembers.slice(0,3).map(p => p.name).join(", ") || "None"}</div>
+        </div>
+        <div class="metric ${streakClass}">
+          <div class="label">Streaks (3+ weeks)</div>
+          <div class="value">${m.streakMembers.length}</div>
+          <div class="badge" title="${m.streakMembers.map(p => p.name).join(", ") || "None"}">${m.streakMembers.slice(0,3).map(p => p.name).join(", ") || "None"}</div>
+        </div>
+      `;
+    }
+
+    function getStatus(personId, weekId) {
+      const record = DATA.attendance.find(a => a.person_id === personId && a.week_id === weekId);
+      return record ? record.status : "not-reported";
+    }
+
+    function usrahSummary(usrahId) {
+      const people = DATA.people.filter(p => p.usrah_id === usrahId && p.active);
+      const attendance = DATA.attendance.filter(a => a.reported_by === usrahId && visibleWeekIds.has(a.week_id));
+
+      let present = 0;
+      let absent = 0;
+      attendance.forEach(a => {
+        if (a.status === "present") present += 1;
+        if (a.status === "absent") absent += 1;
+      });
+      const attendanceRate = present + absent === 0 ? 0 : present / (present + absent);
+
+      const completeness = visibleWeeks.length === 0 ? 0 : new Set(attendance.map(a => a.week_id)).size / visibleWeeks.length;
+
+      const recent = visibleWeeks.slice(-4);
+      const prior = visibleWeeks.slice(-8, -4);
+
+      const computeRate = weeksSlice => {
+        let p = 0, a = 0;
+        weeksSlice.forEach(w => {
+          DATA.attendance
+            .filter(r => r.reported_by === usrahId && r.week_id === w.week_id)
+            .forEach(r => {
+              if (r.status === "present") p += 1;
+              if (r.status === "absent") a += 1;
+            });
+        });
+        return p + a === 0 ? null : p / (p + a);
+      };
+
+      const recentRate = computeRate(recent);
+      const priorRate = computeRate(prior);
+      let trend = "=";
+      if (recentRate !== null && priorRate !== null) {
+        const delta = (recentRate - priorRate) * 100;
+        if (delta >= 5) trend = "+";
+        else if (delta <= -5) trend = "-";
+      }
+
+      return { attendanceRate, completeness, trend, memberCount: people.length };
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById("grid");
+      const emptyState = document.getElementById("empty-state");
+      const hasAttendance = DATA.attendance.some(a => visibleWeekIds.has(a.week_id));
+      grid.style.setProperty("--week-count", visibleWeeks.length);
+
+      if (!hasAttendance) {
+        emptyState.style.display = "block";
+        grid.innerHTML = "";
+        return;
+      }
+      emptyState.style.display = "none";
+
+      const headerCells = [""].concat(visibleWeeks.map(w => {
+        const date = new Date(w.start_date);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }));
+      grid.innerHTML = headerCells.map((text, idx) => `
+        <div class="cell header ${idx === 0 ? "name" : ""}">${text}</div>
+      `).join("");
+
+      DATA.usrah.forEach(usrah => {
+        // Add usra header row
+        grid.innerHTML += `<div class="cell usra-header" data-usrah="${usrah.usrah_id}" style="grid-column: 1 / -1; cursor: pointer;">${usrah.usrah_name} ▼</div>`;
+        const members = DATA.people.filter(p => p.usrah_id === usrah.usrah_id);
+        members.forEach(member => {
+          grid.innerHTML += `<div class="cell name ${member.active ? "" : "inactive"}" data-usrah="${usrah.usrah_id}" aria-label="${member.name}">${member.name}${member.active ? ' <span class="verified">✔</span>' : ''}</div>`;
+          visibleWeeks.forEach(week => {
+            const status = getStatus(member.person_id, week.week_id);
+            const label = `${member.name}, ${week.week_id}, ${status}`;
+            grid.innerHTML += `
+              <div class="cell ${status}" data-usrah="${usrah.usrah_id}" aria-label="${label}" title="${label}"></div>
+            `;
+          });
+        });
+
+      });
+    }
+
+    function initWarnings() {
+      const warning = document.getElementById("warning");
+      if (!DATA.weeks.length) {
+        warning.style.display = "block";
+        warning.textContent = "Weeks sheet is empty. Define weeks to track reporting completeness.";
+      } else {
+        warning.style.display = "none";
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initWarnings();
+      renderMetrics();
+      renderGrid();
+      // Add toggle for usra headers
+      document.querySelectorAll('.usra-header').forEach(header => {
+        header.addEventListener('click', () => {
+          const usrahId = header.dataset.usrah;
+          const cells = document.querySelectorAll(`.cell[data-usrah="${usrahId}"]:not(.usra-header)`);
+          const isCollapsed = header.textContent.includes('▶');
+          cells.forEach(cell => {
+            cell.style.display = isCollapsed ? '' : 'none';
+          });
+          header.textContent = isCollapsed ? header.textContent.replace('▶', '▼') : header.textContent.replace('▼', '▶');
+        });
+      });
+    });
+  </script>
+</body>
+</html>
