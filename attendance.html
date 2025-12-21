@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=5.0, user-scalable=yes">
+  <title>Submit Usrah Attendance</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #22d3ee;
+      --border: #233045;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --bg: #0b1120;
+      --surface: #0f172a;
+    }
+    body { margin: 0; font-family: 'Inter', sans-serif; background: radial-gradient(1200px 600px at 50% -200px, #0b1120 0%, #050b16 100%); color: var(--text); }
+    main { max-width: 900px; margin: 40px auto; padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+    h1 { font-family: 'Press Start 2P', cursive; font-size: 22px; color: var(--accent); text-align: center; margin: 0 0 16px; letter-spacing: 1px; }
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    label { font-weight: 600; }
+    input, select, button { font: inherit; }
+    input, select { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: #0b1225; color: var(--text); min-width: 200px; }
+    button { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--accent); background: #0b1225; color: var(--accent); cursor: pointer; font-weight: 700; }
+    button:hover { background: #0b132b; }
+    .member-attendance { display: flex; justify-content: space-between; align-items: center; padding: 12px; margin-bottom: 8px; background: #0b1225; border: 1px solid var(--border); border-radius: 6px; }
+    .attendance-buttons { display: flex; gap: 8px; }
+    .attendance-buttons button { border-color: var(--border); background: #0b132b; color: var(--text); }
+    .attendance-buttons button.selected { background: var(--accent); color: #0b1120; border-color: var(--accent); }
+    .success { color: #22c55e; }
+    .error { color: #ef4444; }
+    .nav { display:flex; justify-content: space-between; margin-bottom: 12px; }
+    .link { color: var(--accent); text-decoration: none; font-weight: 700; }
+    #usra-title { color: var(--accent); background: transparent; border: none; padding: 0; margin: 16px 0; }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-track {
+      background: var(--border);
+      height: 8px;
+      border-radius: 4px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -6px;
+      background: var(--accent);
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      border: 2px solid #0b1120;
+      box-shadow: 0 0 8px var(--accent);
+    }
+    input[type="range"]::-moz-range-track {
+      background: var(--border);
+      height: 8px;
+      border-radius: 4px;
+    }
+    input[type="range"]::-moz-range-thumb {
+      background: var(--accent);
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      border: 2px solid #0b1120;
+      box-shadow: 0 0 8px var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="nav">
+      <a class="link" href="index.html">← Back to Dashboard</a>
+    </div>
+    <h1>Submit Attendance</h1>
+    <p>Usra leads can submit attendance for their group here.</p>
+
+    <div class="auth-form">
+      <label for="submission-code">Enter your Usra submission code:</label>
+      <div class="form-row" style="margin-top:6px; margin-bottom:12px;">
+        <input type="text" id="submission-code" placeholder="e.g., NR-8432" />
+        <button onclick="authenticateUsra()">Verify</button>
+      </div>
+      <div id="auth-error" class="error" style="display:none;"></div>
+    </div>
+
+    <div id="attendance-form" class="attendance-form" style="display:none;">
+      <h3 id="usra-title"></h3>
+      <label for="week-select">Select Week:</label>
+      <select id="week-select" onchange="updateAttendanceForm()">
+        <option value="">-- Select a week --</option>
+      </select>
+      
+      <div style="margin-top: 20px;">
+        <label>Rate this week's gathering:</label>
+        <div class="form-row" style="margin-top: 10px; gap: 20px;">
+          <div style="flex: 1;">
+            <label for="brotherhood-rating">Brotherhood: <span id="brotherhood-value">3</span></label>
+            <input type="range" id="brotherhood-rating" min="1" max="5" value="3" step="1" style="width: 100%; padding: 0;" oninput="document.getElementById('brotherhood-value').textContent = this.value">
+          </div>
+          <div style="flex: 1;">
+            <label for="service-rating">Service/Action: <span id="service-value">3</span></label>
+            <input type="range" id="service-rating" min="1" max="5" value="3" step="1" style="width: 100%; padding: 0;" oninput="document.getElementById('service-value').textContent = this.value">
+          </div>
+          <div style="flex: 1;">
+            <label for="curriculum-rating">Curriculum: <span id="curriculum-value">3</span></label>
+            <input type="range" id="curriculum-rating" min="1" max="5" value="3" step="1" style="width: 100%; padding: 0;" oninput="document.getElementById('curriculum-value').textContent = this.value">
+          </div>
+        </div>
+      </div>
+
+      <div id="members-list" style="margin-top: 20px;"></div>
+      <div class="form-row" style="margin-top: 12px;">
+        <button onclick="submitAttendance()">Submit Attendance</button>
+        <button class="secondary" onclick="resetForm()">Cancel</button>
+      </div>
+      <div id="submit-message" style="margin-top: 10px;"></div>
+    </div>
+  </main>
+  <script>
+    // Minimal shared sample data
+    const DATA = {
+      settings: { windowMonths: 2 },
+      usrah: [
+        { usrah_id: "u1", usrah_name: "North River", submission_code: "NR-8432" },
+        { usrah_id: "u2", usrah_name: "East Grove", submission_code: "EG-1923" },
+        { usrah_id: "u3", usrah_name: "Westfield", submission_code: "WF-5520" }
+      ],
+      people: [
+        { person_id: "p1", name: "Aisha Rahman", usrah_id: "u1", active: true },
+        { person_id: "p2", name: "Fatimah Khan", usrah_id: "u1", active: true },
+        { person_id: "p3", name: "Yusuf Malik", usrah_id: "u1", active: true },
+        { person_id: "p4", name: "Ismail Odeh", usrah_id: "u2", active: true },
+        { person_id: "p5", name: "Maryam Said", usrah_id: "u2", active: true },
+        { person_id: "p7", name: "Omar Saleh", usrah_id: "u3", active: true },
+        { person_id: "p8", name: "Sarah Idris", usrah_id: "u3", active: true },
+        { person_id: "p9", name: "Bilal Karim", usrah_id: "u3", active: true }
+      ],
+      weeks: [
+        { week_id: "2025-W09", start_date: "2025-03-03", end_date: "2025-03-09" },
+        { week_id: "2025-W10", start_date: "2025-03-10", end_date: "2025-03-16" },
+        { week_id: "2025-W11", start_date: "2025-03-17", end_date: "2025-03-23" },
+        { week_id: "2025-W12", start_date: "2025-03-24", end_date: "2025-03-30" }
+      ],
+      attendance: []
+    };
+
+    let CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code.toLowerCase(), u]));
+
+    const latestWeekEnd = DATA.weeks.reduce((latest, week) => {
+      const end = new Date(week.end_date);
+      return end > latest ? end : latest;
+    }, new Date(0));
+    const cutoffDate = new Date(latestWeekEnd);
+    cutoffDate.setMonth(cutoffDate.getMonth() - DATA.settings.windowMonths);
+    const visibleWeeks = DATA.weeks.filter(week => new Date(week.end_date) >= cutoffDate);
+    const weekOptions = [...visibleWeeks].reverse();
+
+    let currentUsra = null;
+    let attendanceData = {};
+
+    function authenticateUsra() {
+      const code = document.getElementById('submission-code').value.trim().toLowerCase();
+      const errorEl = document.getElementById('auth-error');
+      const formEl = document.getElementById('attendance-form');
+      if (!code) { errorEl.textContent = 'Please enter a submission code'; errorEl.style.display = 'block'; return; }
+      const usra = CODE_TO_USRAH.get(code);
+      if (!usra) { errorEl.textContent = 'Invalid submission code. Please try again.'; errorEl.style.display = 'block'; return; }
+      currentUsra = usra; errorEl.style.display = 'none';
+      document.getElementById('usra-title').textContent = `Submit attendance for ${usra.usrah_name}`;
+      const weekSelect = document.getElementById('week-select');
+      weekSelect.innerHTML = '<option value="">-- Select a week --</option>' + 
+        weekOptions.map(w => `<option value="${w.week_id}">${w.week_id} (${new Date(w.start_date).toLocaleDateString()} - ${new Date(w.end_date).toLocaleDateString()})</option>`).join('');
+      formEl.style.display = 'block'; attendanceData = {};
+    }
+
+    function updateAttendanceForm() {
+      const weekId = document.getElementById('week-select').value;
+      const membersList = document.getElementById('members-list');
+      if (!weekId || !currentUsra) { membersList.innerHTML = ''; return; }
+      const members = DATA.people.filter(p => p.usrah_id === currentUsra.usrah_id && p.active);
+      membersList.innerHTML = members.map(member => {
+        const currentStatus = attendanceData[member.person_id] || '';
+        return `
+          <div class="member-attendance">
+            <span class="member-name">${member.name}</span>
+            <div class="attendance-buttons">
+              <button class="${currentStatus === 'present' ? 'selected' : ''}" onclick="markAttendance('${member.person_id}', 'present')">Present</button>
+              <button class="${currentStatus === 'absent' ? 'selected' : ''}" onclick="markAttendance('${member.person_id}', 'absent')">Absent</button>
+              <button class="${currentStatus === 'excused' ? 'selected' : ''}" onclick="markAttendance('${member.person_id}', 'excused')">Excused</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function markAttendance(personId, status) { attendanceData[personId] = status; updateAttendanceForm(); }
+
+    async function submitAttendance() {
+      const weekId = document.getElementById('week-select').value;
+      const messageEl = document.getElementById('submit-message');
+      if (!weekId) { messageEl.innerHTML = '<span class="error">Please select a week</span>'; return; }
+      
+      const brotherhood = document.getElementById('brotherhood-rating').value;
+      const service = document.getElementById('service-rating').value;
+      const curriculum = document.getElementById('curriculum-rating').value;
+
+      const members = DATA.people.filter(p => p.usrah_id === currentUsra.usrah_id && p.active);
+      const allMarked = members.every(m => attendanceData[m.person_id]);
+      if (!allMarked) { messageEl.innerHTML = '<span class="error">Please mark attendance for all members</span>'; return; }
+      const today = new Date().toISOString().split('T')[0];
+      members.forEach(member => {
+        const record = { 
+          person_id: member.person_id, 
+          week_id: weekId, 
+          status: attendanceData[member.person_id], 
+          reported_by: currentUsra.usrah_id, 
+          reported_at: today,
+          brotherhood_rating: parseInt(brotherhood),
+          service_rating: parseInt(service),
+          curriculum_rating: parseInt(curriculum)
+        };
+        DATA.attendance.push(record);
+      });
+      messageEl.innerHTML = '<span class="success">✓ Attendance submitted successfully! Redirecting…</span>';
+      setTimeout(() => { window.location.href = 'index.html'; }, 1200);
+    }
+
+    function resetForm() {
+      document.getElementById('submission-code').value = '';
+      document.getElementById('attendance-form').style.display = 'none';
+      document.getElementById('members-list').innerHTML = '';
+      document.getElementById('submit-message').innerHTML = '';
+      document.getElementById('brotherhood-rating').value = '3';
+      document.getElementById('service-rating').value = '3';
+      document.getElementById('curriculum-rating').value = '3';
+      document.getElementById('brotherhood-value').textContent = '3';
+      document.getElementById('service-value').textContent = '3';
+      document.getElementById('curriculum-value').textContent = '3';
+      currentUsra = null; attendanceData = {};
+    }
+  </script>
+</body>
+</html>

@@ -1,21 +1,50 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>Usrah Attendance Health Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
+    /* Existing styles */
+    @media print {
+      .usra-header { display: block; }
+      .verified { display: none; }
+      .cell { border: 1px solid #000; }
+      body { background: white; }
+      main { box-shadow: none; }
+      #print-btn { display: none; }
+      .grid-wrapper { display: block; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+    #print-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #print-btn:hover { background: #0056b3; }
     :root {
-      --accent: #0f3d63;
-      --border: #d9d9d9;
-      --text: #0e0e0e;
-      --muted: #6b6b6b;
-      --bg: #fdfdfc;
-      --present: #0f3d63;
-      --absent: #fdfdfc;
-      --excused: #c7d6e5;
-      --not-reported: #eef2f5;
+      --accent: #0ea5e9;
+      --accent-contrast: #ffffff;
+      --border: #e5e7eb;
+      --text: #111111;
+      --muted: #6b7280;
+      --bg: #f7f7f7;
+      --surface: #ffffff;
+      --present: #2e7d32; /* marker color */
+      --present-cell: #e8f5e9;
+      --absent-cell: #fdecea;
+      --excused-cell: #eef3fa;
+      --not-reported: #ffffff;
+      --summary-bg: #f8fafc;
     }
     * { box-sizing: border-box; }
     body {
@@ -24,6 +53,66 @@
       color: var(--text);
       line-height: 1.5;
       min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    /* Mario Kart Racing Aesthetics */
+    @keyframes float { 
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes drift-right {
+      0% { transform: translateX(-100vw); }
+      100% { transform: translateX(100vw); }
+    }
+    @keyframes drift-left {
+      0% { transform: translateX(100vw); }
+      100% { transform: translateX(-100vw); }
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent); }
+      50% { box-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent); }
+    }
+    @keyframes racing-stripe {
+      0% { background-position: 0 0; }
+      100% { background-position: 100px 0; }
+    }
+    .racing-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.03;
+      background: repeating-linear-gradient(90deg, transparent, transparent 40px, var(--accent) 40px, var(--accent) 50px);
+      animation: racing-stripe 2s linear infinite;
+    }
+    .drift-item {
+      position: fixed;
+      font-size: 24px;
+      opacity: 0.4;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    /* Arcade theme variables override */
+    body.theme-arcade {
+      --accent: #00e5ff;
+      --accent-contrast: #0b1120;
+      --border: #233045;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --bg: #0b1120;
+      --surface: #0f172a;
+      --present-cell: rgba(34,197,94,0.18);
+      --absent-cell: rgba(239,68,68,0.18);
+      --excused-cell: rgba(59,130,246,0.18);
+      --not-reported: #0f172a;
+      --summary-bg: #0b1225;
+      background: radial-gradient(1200px 600px at 50% -200px, #0b1120 0%, #050b16 100%);
     }
     header {
       display: flex;
@@ -40,6 +129,18 @@
       font-weight: 700;
       letter-spacing: 0.5px;
     }
+    body.theme-arcade .brand { font-family: 'Press Start 2P', cursive; font-size: 14px; letter-spacing: 1px; }
+    .controls { display: flex; gap: 10px; align-items: center; }
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .hud-item { font-weight: 700; color: var(--text); }
+    body.theme-arcade .hud-item { font-family: 'Press Start 2P', cursive; font-size: 12px; }
     nav a {
       margin-left: 18px;
       color: var(--accent);
@@ -47,16 +148,45 @@
       font-weight: 600;
     }
     main {
-      padding: 20px 24px 60px;
+      padding: 24px 28px 64px;
       max-width: 1200px;
-      margin: 0 auto;
-      background: #fff;
-      min-height: 100vh;
+      margin: 24px auto;
+      background: var(--surface);
+      border-radius: 12px;
+      min-height: 80vh;
+      position: relative;
+      z-index: 2;
+      animation: float 6s ease-in-out infinite;
     }
     h1 {
       margin: 0 0 8px;
-      font-size: 26px;
+      font-size: 32px;
       text-align: center;
+      font-family: 'Press Start 2P', cursive;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-shadow: 0 0 10px rgba(14, 165, 233, 0.5), 0 0 20px rgba(14, 165, 233, 0.3);
+      animation: pulse-glow 3s ease-in-out infinite;
+    }
+    .mission-vision {
+      text-align: center;
+      margin: 16px 0 24px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(59, 130, 246, 0.1));
+      border-left: 3px solid var(--accent);
+      border-right: 3px solid var(--accent);
+      border-radius: 4px;
+      box-shadow: 0 0 15px rgba(14, 165, 233, 0.2);
+    }
+    .mission-vision p {
+      margin: 6px 0;
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .mission-vision strong {
+      color: var(--accent);
+      font-weight: 700;
     }
     h2 {
       margin: 28px 0 12px;
@@ -69,31 +199,33 @@
     }
     .metrics {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
       margin: 20px 0 30px;
     }
     .metric {
-      padding: 12px;
-      background: #fff;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      transition: all 0.3s ease;
     }
-    .metric.good {
-      background: #e8f5e8;
-      color: #2e7d32;
+    .metric:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(34, 211, 238, 0.3);
     }
-    .metric.bad {
-      background: #ffebee;
-      color: #c62828;
-    }
-    .metric.neutral {
-      background: #fff3e0;
-      color: #ef6c00;
-    }
+    .metric.good { border-left: 3px solid #2e7d32; }
+    .metric.good:hover { box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); }
+    .metric.bad { border-left: 3px solid #c62828; }
+    .metric.bad:hover { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); }
+    .metric.neutral { border-left: 3px solid #9ca3af; }
     .metric .label {
-      font-size: 12px;
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--muted);
+      letter-spacing: 1px;
+      color: var(--accent);
+      font-weight: 700;
     }
     .metric .value {
       font-size: 22px;
@@ -101,34 +233,109 @@
       font-weight: 700;
       color: var(--text);
     }
+    /* Metrics table (CSV-like) */
+    .metrics-table-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    table.metrics-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .metrics-table th, .metrics-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+    .metrics-table th { font-weight: 600; color: var(--muted); background: var(--summary-bg); }
+    .metrics-table tr:last-child td { border-bottom: none; }
+    .metrics-table td.value.good { color: #2e7d32; }
+    .metrics-table td.value.bad { color: #c62828; }
+    .metrics-table td.value.neutral { color: #6b7280; }
+
+    /* Leaderboards */
+    .leaderboards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 16px; }
+    .leaderboard { background: var(--surface); border: 2px solid var(--accent); border-radius: 10px; padding: 12px; box-shadow: 0 0 8px rgba(14, 165, 233, 0.2); transition: all 0.3s; }
+    .leaderboard:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(14, 165, 233, 0.4); }
+    .leaderboard.leaderboard-streaks { border-color: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.3); }
+    .leaderboard.leaderboard-streaks:hover { box-shadow: 0 0 15px rgba(34, 197, 94, 0.5); }
+    .leaderboard.leaderboard-attention { border-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
+    .leaderboard.leaderboard-attention:hover { box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+    .leaderboard h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 0.5px; text-transform: uppercase; }
+    .leaderboard-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 6px; border-bottom: 1px solid rgba(14, 165, 233, 0.15); }
+    .leaderboard-item:last-child { border-bottom: none; }
+    .lb-name { font-weight: 600; color: var(--text); font-size: 14px; }
+    .lb-score { font-weight: 700; color: var(--accent); font-size: 13px; }
+
+    /* Usrah metrics table (arcade-styled) */
+    .usrah-table-wrapper { background: var(--surface); border: 2px solid #22c55e; border-radius: 10px; overflow: hidden; box-shadow: 0 0 8px rgba(34, 197, 94, 0.25); transition: all 0.3s; }
+    .usrah-table-wrapper:hover { box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); }
+    table.usrah-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .usrah-table th, .usrah-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; }
+    .usrah-table th { font-weight: 700; color: var(--text); background: var(--summary-bg); letter-spacing: 0.5px; }
+    .usrah-table tr:nth-child(even) td { background: rgba(14,165,233,0.06); }
+    .usrah-table tr:last-child td { border-bottom: none; }
+    .usrah-table .rank { width: 60px; color: var(--muted); font-weight: 700; }
+    .usrah-table .name { font-weight: 700; color: var(--text); }
+    .usrah-table .val { font-weight: 700; color: var(--accent); }
+    .usrah-sort { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+    .usrah-sort .arrow { color: var(--muted); font-size: 12px; }
+    .usrah-sort.active { color: var(--accent); }
+    .usrah-sort.active .arrow { color: var(--accent); }
+    
+    /* D3 Visualization Section */
+    #viz-section { margin: 32px 0; }
+    .viz-container { display: grid; grid-template-columns: 220px 1fr 280px; gap: 16px; min-height: 600px; }
+    .viz-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; box-shadow: 0 0 10px rgba(14, 165, 233, 0.15); transition: all 0.3s; }
+    .viz-panel:hover { box-shadow: 0 0 20px rgba(14, 165, 233, 0.3); }
+    .viz-controls h3, .viz-details h3 { margin: 0 0 12px; font-size: 14px; color: var(--accent); letter-spacing: 0.5px; }
+    .viz-control-group { margin-bottom: 16px; }
+    .viz-control-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+    .viz-control-group select, .viz-control-group input { width: 100%; padding: 8px; background: #0b1225; border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 13px; transition: all 0.2s; }
+    .viz-control-group select:focus, .viz-control-group input:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(14, 165, 233, 0.3); outline: none; }
+    #d3-chart { background: var(--surface); border-radius: 8px; position: relative; overflow: visible; }
+    .member-box { cursor: pointer; transition: all 0.3s; }
+    .member-box:hover { opacity: 0.9; filter: drop-shadow(0 0 10px currentColor); }
+    .member-box rect { stroke-width: 2; transition: all 0.3s; }
+    .member-box:hover rect { filter: brightness(1.2); }
+    .member-box text { font-size: 12px; font-weight: 600; pointer-events: none; fill: #0b1120; }
+    .tier-label { font-size: 13px; font-weight: 700; fill: var(--text); }
+    .viz-details .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .viz-details .detail-label { color: var(--muted); font-size: 12px; }
+    .viz-details .detail-value { color: var(--text); font-weight: 600; font-size: 13px; }
+    .viz-details .member-name { font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
+    .viz-details .empty-state { color: var(--muted); text-align: center; padding: 40px 0; font-size: 13px; }
+    @media (max-width: 1200px) {
+      .viz-container { grid-template-columns: 1fr; }
+      .viz-controls, .viz-details { max-width: 500px; margin: 0 auto; }
+    }
     .grid-wrapper {
       overflow: visible;
-      background: #fff;
+      background: var(--surface);
     }
     .grid {
       display: grid;
-      min-width: 720px;
+      min-width: 900px;
       border-collapse: collapse;
-      grid-template-columns: 220px repeat(var(--week-count), 50px);
+      grid-template-columns: 220px repeat(var(--week-count), 50px) 1fr;
+      grid-auto-rows: minmax(0, auto);
     }
     .grid .cell {
       border-bottom: 1px solid var(--border);
       border-right: 1px solid var(--border);
       padding: 10px;
-      height: 44px;
+      min-height: 44px;
       font-size: 13px;
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      background: #fff;
+      background: var(--surface);
     }
-    .grid .cell.present { background: green; }
-    .grid .cell.absent { background: rgb(255, 91, 91); }
-    .grid .cell.excused { background: var(--excused); }
-    .grid .cell.not-reported { background: white; }
-    .grid .cell:hover { opacity: 0.7; cursor: pointer; }
+    .grid .cell.present { background: var(--present-cell); }
+    .grid .cell.absent { background: var(--absent-cell); }
+    .grid .cell.excused { background: var(--excused-cell); }
+    .grid .cell.not-reported { background: var(--surface); }
+    .grid .cell:hover { 
+      box-shadow: inset 0 0 0 2px var(--border), 0 0 12px rgba(34, 211, 238, 0.4); 
+      cursor: pointer; 
+      transform: scale(1.02);
+      transition: all 0.2s ease;
+    }
+    .grid .cell.present:hover { box-shadow: inset 0 0 0 2px var(--border), 0 0 16px rgba(34, 197, 94, 0.6); }
+    .grid .cell.absent:hover { box-shadow: inset 0 0 0 2px var(--border), 0 0 16px rgba(239, 68, 68, 0.6); }
+    .grid .cell.excused:hover { box-shadow: inset 0 0 0 2px var(--border), 0 0 16px rgba(245, 158, 11, 0.6); }
     .grid .cell.header {
-      position: sticky;
+      /* position: sticky; */
       top: 0;
       background: none;
       font-weight: 700;
@@ -143,6 +350,92 @@
       transform: none;
       text-align: left;
     }
+    .grid .cell.header.summary-header {
+      transform: none;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .grid .cell.summary-spacer {
+      background: var(--surface);
+      border-right: none;
+    }
+    .grid .cell.usra-summary {
+      border-left: 1px solid var(--border);
+      background: var(--summary-bg);
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+    }
+    .grid .cell.usra-summary strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .gauges-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .gauge-row {
+      display: flex;
+      flex-direction: column;
+    }
+    .gauge-label {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .gauge-container {
+      position: relative;
+      width: 90px;
+      height: 55px;
+      margin: 0 auto;
+    }
+    .gauge-svg {
+      width: 100%;
+      height: 100%;
+    }
+    .gauge-arc {
+      fill: none;
+      stroke: #e0e0e0;
+      stroke-width: 8;
+    }
+    .gauge-fill {
+      fill: none;
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dasharray 0.5s ease;
+    }
+    .gauge-fill.good {
+      stroke: #4caf50;
+    }
+    .gauge-fill.neutral {
+      stroke: #ff9800;
+    }
+    .gauge-fill.bad {
+      stroke: #f44336;
+    }
+    body.theme-arcade .gauge-fill.good { stroke: #22c55e; }
+    body.theme-arcade .gauge-fill.neutral { stroke: #38bdf8; }
+    body.theme-arcade .gauge-fill.bad { stroke: #ef4444; }
+    .gauge-value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -30%);
+      font-size: 16px;
+      font-weight: 700;
+      color: #333;
+    }
+    body.theme-arcade .gauge-value { color: var(--text); }
     .grid .cell.name {
       position: sticky;
       left: 0;
@@ -156,16 +449,81 @@
       text-decoration: line-through;
       border-right: none;
     }
+    .cell .markers {
+      margin-left: 6px;
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .badges {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      margin-left: 6px;
+    }
+    .badge-icon {
+      display: inline-block;
+      line-height: 1;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      text-shadow: 0 0 6px rgba(34, 197, 94, 0.3);
+    }
+    .badge-icon.member { color: #22c55e; text-shadow: 0 0 6px rgba(34, 197, 94, 0.6); }
+    .badge-icon.plan { color: #22d3ee; text-shadow: 0 0 6px rgba(34, 211, 238, 0.6); }
+    .badge-icon.leadership { color: #f59e0b; text-shadow: 0 0 6px rgba(245, 158, 11, 0.6); }
     .summary-row {
-      background: #f5f7f9;
+      background: var(--summary-bg);
       font-weight: 600;
       font-family: 'Courier New', monospace;
     }
     .usra-header {
-      background: #e0e0e0;
+      background: var(--surface);
       text-align: center;
+      font-weight: 700;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    body.theme-arcade .usra-header { box-shadow: 0 0 0 2px #0ea5e9 inset; }
+    .tooltip {
+      position: relative;
+    }
+    .tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: pre-line;
+      max-width: 300px;
+      text-align: left;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 10;
+    }
+    .tooltip:hover::after {
+      opacity: 1;
+    }
+    .position {
       font-weight: bold;
-      padding: 8px;
+      font-size: 14px;
+    }
+    .name {
+      font-size: 16px;
+      /* margin-top: 5px; */
+    }
+    .sub-leaders {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
     }
     .summary-text {
       display: flex;
@@ -188,14 +546,9 @@
     .muted { color: var(--muted); }
     .verified {
       display: inline-block;
-      background: #1da1f2;
-      color: white;
-      border-radius: 50%;
-      width: 14px;
-      height: 14px;
-      text-align: center;
-      font-size: 10px;
-      line-height: 14px;
+      color: #22c55e;
+      font-weight: 700;
+      font-size: 12px;
       margin-left: 4px;
     }
     .warning {
@@ -210,7 +563,7 @@
       padding: 16px;
       color: var(--muted);
       border: 1px dashed var(--border);
-      background: #fff;
+      background: var(--surface);
     }
     #submit {
       margin-top: 40px;
@@ -236,22 +589,32 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       min-width: 200px;
-      background: #fff;
+      background: var(--surface);
+      color: var(--text);
     }
     button {
       padding: 10px 14px;
-      border-radius: 6px;
-      border: 1px solid var(--accent);
-      background: var(--accent);
-      color: #fff;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--accent);
       cursor: pointer;
       font-weight: 700;
-      transition: background 0.15s ease, color 0.15s ease;
+      transition: all 0.2s;
+      box-shadow: 0 0 5px rgba(14, 165, 233, 0.2);
+    }
+    button:hover { 
+      background: #f2f4f7; 
+      box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+      transform: translateY(-1px);
     }
     button.secondary {
-      background: #fff;
-      color: var(--accent);
+      background: var(--surface);
+      color: var(--muted);
+      border-color: var(--border);
     }
+    body.theme-arcade button { color: var(--accent); border-color: #0ea5e9; }
+    body.theme-arcade button:hover { background: #0b1225; }
     button:disabled {
       background: #e0e7ee;
       border-color: #e0e7ee;
@@ -271,7 +634,7 @@
       border: 1px solid var(--border);
       padding: 10px 12px;
       margin-bottom: 8px;
-      background: #fff;
+      background: var(--surface);
     }
     .member-header {
       display: flex;
@@ -308,46 +671,709 @@
       display: grid;
       gap: 6px;
     }
-    @media (max-width: 720px) {
-      header { flex-direction: column; align-items: flex-start; gap: 8px; }
-      nav a { margin-left: 0; margin-right: 12px; }
-      .grid { grid-template-columns: 160px repeat(var(--week-count), 1fr); }
-      .grid .cell { padding: 8px; }
+    #attendance-submission {
+      margin-top: 40px;
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    #attendance-submission h2 {
+      margin-top: 0;
+    }
+    .auth-form {
+      max-width: 400px;
+      margin: 20px 0;
+    }
+    .attendance-form {
+      display: none;
+      margin-top: 20px;
+    }
+    .attendance-form.active {
+      display: block;
+    }
+    .member-attendance {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    .member-attendance .member-name {
+      font-weight: 600;
+    }
+    .attendance-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .attendance-buttons button {
+      padding: 6px 12px;
+      font-size: 13px;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .attendance-buttons button.selected {
+      background: var(--accent);
+      color: var(--accent-contrast);
+      border-color: var(--accent);
+    }
+    /* XP Progress bar */
+    .xp-bar { position: relative; height: 8px; background: #e5e7eb; border-radius: 6px; overflow: hidden; }
+    .xp-fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--accent); width: 0%; transition: width 0.5s ease; }
+    body.theme-arcade .xp-bar { background: #16233a; }
+    body.theme-arcade .xp-fill { background: #22d3ee; }
+    /* Confetti */
+    #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 999; }
+    .confetti-piece { position: absolute; width: 8px; height: 12px; background: #22d3ee; opacity: 0.9; transform: translateY(-20px); animation: confettiFall 1.8s linear forwards; }
+    .confetti-piece.c2 { background: #f59e0b; }
+    .confetti-piece.c3 { background: #ef4444; }
+    .confetti-piece.c4 { background: #22c55e; }
+    @keyframes confettiFall { to { transform: translateY(110vh) rotate(360deg); opacity: 0.8; } }
+    .attendance-buttons button.selected {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .submit-attendance {
+      margin-top: 20px;
+    }
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 22px;
+        letter-spacing: 1px;
+      }
+      .mission-vision {
+        padding: 10px 12px;
+        margin: 12px 0 16px;
+      }
+      .mission-vision p {
+        font-size: 12px;
+        margin: 4px 0;
+      }
+      body {
+        font-size: 14px;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px;
+        position: relative;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      nav a {
+        margin-left: 0;
+        font-size: 13px;
+      }
+      #print-btn {
+        position: static;
+        width: 100%;
+        margin-bottom: 12px;
+      }
+      main {
+        padding: 16px;
+      }
+      h1 {
+        font-size: 20px;
+        margin-bottom: 12px;
+      }
+      p {
+        font-size: 13px;
+      }
+      .metrics {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin: 16px 0 24px;
+      }
+      .metric {
+        padding: 14px;
+      }
+      .metric .label {
+        font-size: 11px;
+      }
+      .metric .value {
+        font-size: 20px;
+      }
+      .metric .badge {
+        font-size: 11px;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .grid-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -16px;
+        padding: 0 16px;
+      }
+      .grid {
+        min-width: 800px;
+        grid-template-columns: 140px repeat(var(--week-count), 44px) 220px;
+      }
+      .grid .cell {
+        padding: 8px 6px;
+        font-size: 12px;
+        min-height: 38px;
+      }
+      .grid .cell.header {
+        font-size: 11px;
+      }
+      .grid .cell.name {
+        font-size: 13px;
+      }
+      .grid .cell.usra-header {
+        font-size: 13px;
+        padding: 10px 8px;
+      }
+      .grid .cell.usra-summary {
+        padding: 8px;
+        font-size: 11px;
+      }
+      .gauges-grid {
+        gap: 6px;
+      }
+      .gauge-container {
+        width: 70px;
+        height: 45px;
+      }
+      .gauge-value {
+        font-size: 13px;
+      }
+      .gauge-label {
+        font-size: 10px;
+      }
+      .marker {
+        width: 8px;
+        height: 8px;
+      }
+      #attendance-submission {
+        padding: 16px;
+        margin-top: 24px;
+      }
+      #attendance-submission h2 {
+        font-size: 18px;
+      }
+      #attendance-submission h3 {
+        font-size: 16px;
+      }
+      .auth-form,
+      #attendance-form {
+        max-width: 100%;
+      }
+      .form-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      input, select {
+        width: 100%;
+        min-width: 0;
+        padding: 12px;
+        font-size: 16px;
+      }
+      button {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 15px;
+        touch-action: manipulation;
+      }
+      .badges {
+        margin-left: 4px;
+        gap: 4px;
+      }
+      .badge-icon {
+        width: 16px;
+        height: 16px;
+        line-height: 16px;
+        font-size: 11px;
+      }
+      .member-attendance {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px;
+      }
+      .member-attendance .member-name {
+        font-size: 14px;
+      }
+      .attendance-buttons {
+        flex-wrap: wrap;
+        justify-content: stretch;
+      }
+      .attendance-buttons button {
+        flex: 1;
+        min-width: calc(33.33% - 6px);
+        padding: 10px 8px;
+        font-size: 13px;
+      }
+      .submit-attendance {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .submit-attendance button {
+        width: 100%;
+      }
+      .tooltip::after {
+        font-size: 11px;
+        padding: 6px 10px;
+        max-width: 250px;
+      }
+    }
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 18px;
+      }
+      .grid {
+        grid-template-columns: 120px repeat(var(--week-count), 40px) 200px;
+      }
+      .grid .cell {
+        padding: 6px 4px;
+        font-size: 11px;
+      }
+      .grid .cell.name {
+        font-size: 12px;
+      }
+      .gauge-container {
+        width: 60px;
+        height: 40px;
+      }
+      .gauge-value {
+        font-size: 12px;
+      }
+      .gauge-label {
+        font-size: 9px;
+      }
     }
   </style>
 </head>
-<body>
+<body class="theme-arcade">
+  <div class="racing-bg"></div>
+  <div class="drift-item" style="top:10%; left:5%; animation-delay:0s;">🏁</div>
+  <div class="drift-item" style="top:30%; left:80%; animation-delay:1.5s;">🏆</div>
+  <div class="drift-item" style="top:50%; left:10%; animation-delay:3s;">⭐</div>
+  <div class="drift-item" style="top:70%; left:70%; animation-delay:4.5s;">💨</div>
+  <div class="drift-item" style="top:85%; left:30%; animation-delay:2s;">🎮</div>
+  
+  
+  <button id="attendance-btn" onclick="playSound('ach'); window.location.href='attendance.html'" style="position: fixed; top: 20px; right: 20px; padding: 10px 15px;">Usrah Attendance</button>
+  <div id="confetti"></div>
   <main>
     <section id="dashboard">
-      <h1>Houston Usrah Health</h1>
-      <p>Visual grid to spot decay, weak usrahs, and non-reporting groups. Data below is sample; hook up to your Google Sheet to go live.</p>
+      <h1>HOUSTON USRAH HEALTH</h1>
+      <div class="mission-vision">
+        <p><strong>Mission:</strong> Build strong, accountable usrahs that nurture growth and development</p>
+        <p><strong>Vision:</strong> A community of active, engaged members driving tarbiya forward</p>
+      </div>
+      
+      <section id="viz-section">
+        <div class="viz-container">
+          <div class="viz-panel viz-controls">
+            <h3>🎮 CONTROLS</h3>
+            <div class="viz-control-group">
+              <label for="viz-group">Group By</label>
+              <select id="viz-group">
+                <option value="usrah">Usrah</option>
+                <option value="attendance">Attendance Rate</option>
+                <option value="streak">Streak</option>
+                <option value="status">Status</option>
+              </select>
+            </div>
+            <div class="viz-control-group">
+              <label for="viz-sort">Sort By</label>
+              <select id="viz-sort">
+                <option value="name">Name</option>
+                <option value="attendance">Attendance</option>
+                <option value="streak">Streak</option>
+              </select>
+            </div>
+            <div class="viz-control-group">
+              <label for="viz-filter">Filter</label>
+              <input type="text" id="viz-filter" placeholder="Search members..." />
+            </div>
+          </div>
+          
+          <div class="viz-panel" id="d3-chart"></div>
+          
+          <div class="viz-panel viz-details">
+            <h3>📊 MEMBER DETAILS</h3>
+            <div id="member-details">
+              <div class="empty-state">Click a member to view details</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div id="warning" class="warning" style="display:none;"></div>
       <div class="metrics" id="metrics"></div>
       <div class="grid-wrapper" id="grid-wrapper">
-        <div class="empty" id="empty-state" style="display:none;">No attendance submitted yet. Weeks still appear for context.</div>
-        <div class="grid" id="grid"></div>
+        <div class="attendance-grid">
+          <div class="empty" id="empty-state" style="display:none;">No attendance submitted yet. Weeks still appear for context.</div>
+          <div class="grid" id="grid"></div>
+        </div>
       </div>
     </section>
+
+    <section id="usrah-board">
+      <h2>Usrah Leaderboard</h2>
+      <div id="usrah-leaderboard" class="usrah-table-wrapper"></div>
+    </section>
+
+    
+
+    
   </main>
   <script>
+    // =====================
+    // ARCADE HELPERS (LIGHT MODE)
+    // =====================
+    function showToast(text) {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.textContent = text;
+      const container = document.querySelector('main') || document.body;
+      container.appendChild(el);
+      setTimeout(() => el.remove(), 2500);
+    }
+
+    function playSound(type) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = type === 'ach' ? 'triangle' : 'square';
+      o.frequency.setValueAtTime(type === 'ach' ? 880 : 660, ctx.currentTime);
+      g.gain.setValueAtTime(0.001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      o.stop(ctx.currentTime + 0.22);
+    }
+
+    function confettiBurst(count = 30) {
+      const container = document.getElementById('confetti');
+      if (!container) return;
+      for (let i = 0; i < count; i++) {
+        const piece = document.createElement('div');
+        piece.className = `confetti-piece c${1 + (i % 4)}`;
+        piece.style.left = Math.random() * 100 + '%';
+        piece.style.animationDelay = (Math.random() * 0.5) + 's';
+        piece.style.transform = `translateY(-20px) rotate(${Math.random()*180}deg)`;
+        container.appendChild(piece);
+        setTimeout(() => piece.remove(), 2200);
+      }
+    }
+
+    function awardPoints(points, reason = '') {
+      if (reason) showToast(`+${points} XP • ${reason}`);
+      playSound('coin');
+      confettiBurst();
+    }
+    
+    // ============================================
+    // D3 VISUALIZATION
+    // ============================================
+    let vizSettings = { groupBy: 'usrah', sortBy: 'name', filter: '' };
+    
+    function getAttendanceRate(personId) {
+      const records = DATA.attendance.filter(a => a.person_id === personId && visibleWeekIds.has(a.week_id));
+      const present = records.filter(r => r.status === 'present').length;
+      const total = records.length;
+      return total === 0 ? 0 : present / total;
+    }
+    
+    function renderD3Visualization() {
+      const chartEl = document.getElementById('d3-chart');
+      if (!chartEl) return;
+      
+      // Get active people with metrics
+      let people = DATA.people.filter(p => p.active).map(p => {
+        const rate = getAttendanceRate(p.person_id);
+        const streak = getBestStreak(p.person_id);
+        const usrah = USRAH_BY_ID.get(p.usrah_id);
+        return {
+          ...p,
+          attendanceRate: rate,
+          streak: streak,
+          usrahName: usrah ? usrah.usrah_name : 'Unknown',
+          tier: rate >= 0.8 ? 'excellent' : rate >= 0.6 ? 'good' : rate >= 0.4 ? 'okay' : 'needs-attention'
+        };
+      });
+      
+      // Apply filter
+      if (vizSettings.filter) {
+        const search = vizSettings.filter.toLowerCase();
+        people = people.filter(p => p.name.toLowerCase().includes(search));
+      }
+      
+      // Sort
+      if (vizSettings.sortBy === 'attendance') {
+        people.sort((a, b) => b.attendanceRate - a.attendanceRate);
+      } else if (vizSettings.sortBy === 'streak') {
+        people.sort((a, b) => b.streak - a.streak);
+      } else {
+        people.sort((a, b) => a.name.localeCompare(b.name));
+      }
+      
+      // Group
+      let groups = [];
+      if (vizSettings.groupBy === 'usrah') {
+        const usrahMap = new Map();
+        people.forEach(p => {
+          if (!usrahMap.has(p.usrah_id)) usrahMap.set(p.usrah_id, []);
+          usrahMap.get(p.usrah_id).push(p);
+        });
+        groups = Array.from(usrahMap.entries()).map(([id, members]) => ({
+          label: members[0].usrahName,
+          members
+        }));
+      } else if (vizSettings.groupBy === 'attendance') {
+        const tierMap = { excellent: [], good: [], okay: [], 'needs-attention': [] };
+        people.forEach(p => tierMap[p.tier].push(p));
+        groups = [
+          { label: '80%+ (Excellent)', members: tierMap.excellent },
+          { label: '60-79% (Good)', members: tierMap.good },
+          { label: '40-59% (Okay)', members: tierMap.okay },
+          { label: '<40% (Needs Attention)', members: tierMap['needs-attention'] }
+        ].filter(g => g.members.length > 0);
+      } else if (vizSettings.groupBy === 'streak') {
+        const streakMap = { high: [], medium: [], low: [] };
+        people.forEach(p => {
+          if (p.streak >= 3) streakMap.high.push(p);
+          else if (p.streak >= 1) streakMap.medium.push(p);
+          else streakMap.low.push(p);
+        });
+        groups = [
+          { label: '3+ Weeks Streak', members: streakMap.high },
+          { label: '1-2 Weeks Streak', members: streakMap.medium },
+          { label: 'No Streak', members: streakMap.low }
+        ].filter(g => g.members.length > 0);
+      } else {
+        const statusMap = { member: [], interested: [] };
+        people.forEach(p => {
+          if (p.is_member) statusMap.member.push(p);
+          else statusMap.interested.push(p);
+        });
+        groups = [
+          { label: 'Members', members: statusMap.member },
+          { label: 'Interested', members: statusMap.interested }
+        ].filter(g => g.members.length > 0);
+      }
+      
+      // Build D3 layout with transitions
+      const width = chartEl.clientWidth - 32;
+      const boxWidth = 140;
+      const boxHeight = 40;
+      const boxGap = 8;
+      const groupGap = 30;
+      const cols = Math.floor(width / (boxWidth + boxGap)) || 1;
+      
+      let svg = d3.select('#d3-chart').select('svg');
+      if (svg.empty()) {
+        svg = d3.select('#d3-chart')
+          .append('svg')
+          .attr('width', width)
+          .style('overflow', 'visible');
+      }
+      
+      // Flatten data for position calculations
+      const flatData = [];
+      let yOffset = 20;
+      
+      groups.forEach(group => {
+        flatData.push({ type: 'label', label: group.label, y: yOffset });
+        yOffset += 25;
+        
+        group.members.forEach((member, idx) => {
+          const col = idx % cols;
+          const row = Math.floor(idx / cols);
+          const x = col * (boxWidth + boxGap) + 10;
+          const y = yOffset + row * (boxHeight + boxGap);
+          
+          const color = member.attendanceRate >= 0.8 ? '#22c55e' : 
+                        member.attendanceRate >= 0.6 ? '#22d3ee' :
+                        member.attendanceRate >= 0.4 ? '#f59e0b' : '#ef4444';
+          
+          flatData.push({
+            type: 'box',
+            member,
+            x, y,
+            color
+          });
+        });
+        
+        const rows = Math.ceil(group.members.length / cols);
+        yOffset += rows * (boxHeight + boxGap) + groupGap;
+      });
+      
+      // Update SVG height with transition
+      svg.transition().duration(500).attr('height', yOffset);
+      
+      // Labels - data join
+      const labels = svg.selectAll('.tier-label')
+        .data(flatData.filter(d => d.type === 'label'), d => d.label);
+      
+      labels.exit().remove();
+      
+      const labelsEnter = labels.enter()
+        .append('text')
+        .attr('class', 'tier-label')
+        .attr('x', 10)
+        .attr('y', d => d.y)
+        .style('opacity', 0);
+      
+      labelsEnter.merge(labels)
+        .transition()
+        .duration(500)
+        .attr('y', d => d.y)
+        .style('opacity', 1)
+        .text(d => d.label);
+      
+      // Member boxes - data join with key function
+      const boxes = svg.selectAll('.member-box')
+        .data(flatData.filter(d => d.type === 'box'), d => d.member.person_id);
+      
+      // Remove old boxes
+      boxes.exit()
+        .transition()
+        .duration(300)
+        .style('opacity', 0)
+        .remove();
+      
+      // Add new boxes
+      const boxesEnter = boxes.enter()
+        .append('g')
+        .attr('class', 'member-box')
+        .attr('data-person-id', d => d.member.person_id)
+        .style('cursor', 'pointer')
+        .style('opacity', 0);
+      
+      boxesEnter.append('rect')
+        .attr('width', boxWidth)
+        .attr('height', boxHeight)
+        .attr('rx', 4);
+      
+      boxesEnter.append('text')
+        .attr('text-anchor', 'middle');
+      
+      // Update all boxes (both new and existing) with smooth transitions
+      const allBoxes = boxesEnter.merge(boxes);
+      
+      allBoxes.transition()
+        .duration(500)
+        .style('opacity', 1);
+      
+      allBoxes.select('rect')
+        .transition()
+        .duration(500)
+        .attr('x', d => d.x)
+        .attr('y', d => d.y)
+        .attr('fill', d => d.color)
+        .attr('stroke', d => d.color);
+      
+      allBoxes.select('text')
+        .transition()
+        .duration(500)
+        .attr('x', d => d.x + boxWidth / 2)
+        .attr('y', d => d.y + boxHeight / 2 + 5)
+        .text(d => d.member.name);
+      
+      // Re-attach click handlers
+      allBoxes.on('click', function(event, d) {
+        showMemberDetails(d.member);
+      });
+    }
+    
+    function showMemberDetails(member) {
+      playSound('note');
+      const detailsEl = document.getElementById('member-details');
+      const rate = formatPercent(member.attendanceRate);
+      const usrah = USRAH_BY_ID.get(member.usrah_id);
+      const recentWeeks = visibleWeeks.slice(-4);
+      const recentRecords = DATA.attendance.filter(a => 
+        a.person_id === member.person_id && recentWeeks.map(w => w.week_id).includes(a.week_id)
+      );
+      const recentPresent = recentRecords.filter(r => r.status === 'present').length;
+      
+      detailsEl.innerHTML = `
+        <div class="member-name">${member.name}</div>
+        <div class="detail-row">
+          <span class="detail-label">Usrah</span>
+          <span class="detail-value">${member.usrahName}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Overall Attendance</span>
+          <span class="detail-value">${rate}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Best Streak</span>
+          <span class="detail-value">${member.streak} weeks</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Recent (4 wks)</span>
+          <span class="detail-value">${recentPresent} / ${recentWeeks.length}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Member Status</span>
+          <span class="detail-value">${member.is_member ? '✔ Member' : 'Interested'}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Dev Plan</span>
+          <span class="detail-value">${member.development_plan ? '✔ On file' : 'Not on file'}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Leadership</span>
+          <span class="detail-value">${member.leadership ? '★ Yes' : 'No'}</span>
+        </div>
+      `;
+    }
+    
+    // ============================================
+    // GOOGLE SHEETS CONFIGURATION
+    // ============================================
+    // Replace these with your actual values:
+    const CONFIG = {
+      SPREADSHEET_ID: '1SImm1Bn9vaw1gtuVPp9XG9WNCN4pLVVSwHYsPZF8sRs',  // From the URL of your Google Sheet
+      API_KEY: 'AIzaSyAxI7WtFFF9JTEOO6UyhlnZxdBx9Nd_nXs',  // From Google Cloud Console
+      SHEET_NAMES: {
+        settings: 'Settings',
+        usrah: 'Usrah',
+        people: 'People',
+        weeks: 'Weeks',
+        attendance: 'Attendance'
+      },
+      USE_GOOGLE_SHEETS: false  // Set to true when ready to use Google Sheets
+    };
+
     // Sample data standing in for Google Sheets responses.
     const DATA = {
-      settings: { windowWeeks: 12 },
+      settings: { windowMonths: 2 },
       usrah: [
         { usrah_id: "u1", usrah_name: "North River", submission_code: "NR-8432" },
         { usrah_id: "u2", usrah_name: "East Grove", submission_code: "EG-1923" },
         { usrah_id: "u3", usrah_name: "Westfield", submission_code: "WF-5520" }
       ],
       people: [
-        { person_id: "p1", name: "Aisha Rahman", usrah_id: "u1", active: true },
-        { person_id: "p2", name: "Fatimah Khan", usrah_id: "u1", active: true },
-        { person_id: "p3", name: "Yusuf Malik", usrah_id: "u1", active: true },
-        { person_id: "p4", name: "Ismail Odeh", usrah_id: "u2", active: true },
-        { person_id: "p5", name: "Maryam Said", usrah_id: "u2", active: true },
-        { person_id: "p6", name: "Nadia Idris", usrah_id: "u2", active: false },
-        { person_id: "p7", name: "Omar Saleh", usrah_id: "u3", active: true },
-        { person_id: "p8", name: "Sarah Idris", usrah_id: "u3", active: true },
-        { person_id: "p9", name: "Bilal Karim", usrah_id: "u3", active: true }
+        { person_id: "p1", name: "Aisha Rahman", usrah_id: "u1", active: true, is_member: true, development_plan: true, leadership: true },
+        { person_id: "p2", name: "Fatimah Khan", usrah_id: "u1", active: true, is_member: true, development_plan: false, leadership: false },
+        { person_id: "p3", name: "Yusuf Malik", usrah_id: "u1", active: true, is_member: true, development_plan: true, leadership: false },
+        { person_id: "p4", name: "Ismail Odeh", usrah_id: "u2", active: true, is_member: true, development_plan: true, leadership: true },
+        { person_id: "p5", name: "Maryam Said", usrah_id: "u2", active: true, is_member: true, development_plan: false, leadership: false },
+        { person_id: "p6", name: "Nadia Idris", usrah_id: "u2", active: false, is_member: false, development_plan: false, leadership: false },
+        { person_id: "p7", name: "Omar Saleh", usrah_id: "u3", active: true, is_member: true, development_plan: true, leadership: false },
+        { person_id: "p8", name: "Sarah Idris", usrah_id: "u3", active: true, is_member: true, development_plan: true, leadership: true },
+        { person_id: "p9", name: "Bilal Karim", usrah_id: "u3", active: true, is_member: true, development_plan: false, leadership: false }
       ],
       weeks: [
         { week_id: "2025-W01", start_date: "2025-01-06", end_date: "2025-01-12" },
@@ -390,18 +1416,148 @@
       ]
     };
 
-    // Derived maps for quick lookups.
-    const PEOPLE_BY_ID = new Map(DATA.people.map(p => [p.person_id, p]));
-    const USRAH_BY_ID = new Map(DATA.usrah.map(u => [u.usrah_id, u]));
-    const CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code.toLowerCase(), u]));
+    // ============================================
+    // GOOGLE SHEETS API FUNCTIONS
+    // ============================================
+    async function fetchSheetData(sheetName) {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${sheetName}?key=${CONFIG.API_KEY}`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${sheetName}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.values || [];
+      } catch (error) {
+        console.error(`Error fetching ${sheetName}:`, error);
+        return [];
+      }
+    }
 
-    const visibleWeeks = DATA.weeks.slice(-DATA.settings.windowWeeks);
+    function parseSheetData(rows, headers) {
+      if (rows.length === 0) return [];
+      const actualHeaders = headers || rows[0];
+      const dataRows = headers ? rows : rows.slice(1);
+      return dataRows.map(row => {
+        const obj = {};
+        actualHeaders.forEach((header, i) => {
+          obj[header] = row[i] || '';
+        });
+        return obj;
+      });
+    }
+
+    async function loadDataFromGoogleSheets() {
+      try {
+        console.log('Loading data from Google Sheets...');
+        
+        // Fetch all sheets in parallel
+        const [settingsRows, usrahRows, peopleRows, weeksRows, attendanceRows] = await Promise.all([
+          fetchSheetData(CONFIG.SHEET_NAMES.settings),
+          fetchSheetData(CONFIG.SHEET_NAMES.usrah),
+          fetchSheetData(CONFIG.SHEET_NAMES.people),
+          fetchSheetData(CONFIG.SHEET_NAMES.weeks),
+          fetchSheetData(CONFIG.SHEET_NAMES.attendance)
+        ]);
+
+        // Parse settings (key-value pairs)
+        const settings = {};
+        settingsRows.slice(1).forEach(row => {
+          if (row[0] && row[1]) settings[row[0]] = isNaN(row[1]) ? row[1] : Number(row[1]);
+        });
+
+        // Parse other sheets
+        const usrah = parseSheetData(usrahRows);
+        const people = parseSheetData(peopleRows).map(p => ({
+          ...p,
+          active: p.active === 'TRUE' || p.active === 'true' || p.active === true,
+          is_member: p.is_member === 'TRUE' || p.is_member === 'true' || p.is_member === true,
+          development_plan: p.development_plan === 'TRUE' || p.development_plan === 'true' || p.development_plan === true
+        }));
+        const weeks = parseSheetData(weeksRows);
+        const attendance = parseSheetData(attendanceRows);
+
+        return { settings, usrah, people, weeks, attendance };
+      } catch (error) {
+        console.error('Error loading data from Google Sheets:', error);
+        alert('Failed to load data from Google Sheets. Please check your configuration and try again.');
+        return null;
+      }
+    }
+
+    async function submitAttendanceToGoogleSheets(attendanceRecords) {
+      // For writing to Google Sheets, we need to use Google Apps Script
+      // See setup instructions for creating the web app endpoint
+      const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+      
+      try {
+        const response = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ records: attendanceRecords })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to submit attendance');
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Error submitting attendance:', error);
+        throw error;
+      }
+    }
+
+    // Derived maps for quick lookups.
+    let PEOPLE_BY_ID = new Map(DATA.people.map(p => [p.person_id, p]));
+    let USRAH_BY_ID = new Map(DATA.usrah.map(u => [u.usrah_id, u]));
+    let CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code.toLowerCase(), u]));
+
+    const latestWeekEnd = DATA.weeks.reduce((latest, week) => {
+      const end = new Date(week.end_date);
+      return end > latest ? end : latest;
+    }, new Date(0));
+    const cutoffDate = new Date(latestWeekEnd);
+    cutoffDate.setMonth(cutoffDate.getMonth() - DATA.settings.windowMonths);
+    const visibleWeeks = DATA.weeks.filter(week => new Date(week.end_date) >= cutoffDate);
     const visibleWeekIds = new Set(visibleWeeks.map(w => w.week_id));
     const weekOptions = [...visibleWeeks].reverse(); // latest first for selection
 
     function formatPercent(n) {
       if (Number.isNaN(n)) return "0%";
       return `${Math.round(n * 100)}%`;
+    }
+
+    function renderGauge(value, max = 100, suffix = '') {
+      const numValue = typeof value === 'number' ? value : parseFloat(value) || 0;
+      const percentage = Math.min((numValue / max) * 100, 100);
+      const arcLength = 140;
+      const fillLength = (arcLength * percentage) / 100;
+      const dashArray = `${fillLength} ${arcLength}`;
+      
+      let colorClass = 'neutral';
+      if (percentage >= 80) colorClass = 'good';
+      else if (percentage < 50) colorClass = 'bad';
+      
+      return `
+        <div class="gauge-container">
+          <svg class="gauge-svg" viewBox="0 0 100 60">
+            <path class="gauge-arc" d="M 10 50 A 40 40 0 0 1 90 50" />
+            <path class="gauge-fill ${colorClass}" d="M 10 50 A 40 40 0 0 1 90 50" 
+                  stroke-dasharray="${dashArray}" stroke-dashoffset="0" />
+          </svg>
+          <div class="gauge-value">${Math.round(numValue)}${suffix}</div>
+        </div>
+      `;
+    }
+
+    function renderTrendGauge(trend) {
+      const trendMap = { '+': 80, '=': 50, '-': 20 };
+      const value = trendMap[trend] || 50;
+      return renderGauge(value, 100, '');
     }
 
     function computeMetrics() {
@@ -455,6 +1611,18 @@
       };
     }
 
+    function getBestStreak(personId) {
+      const records = DATA.attendance
+        .filter(a => a.person_id === personId && visibleWeekIds.has(a.week_id))
+        .reduce((map, r) => (map[r.week_id] = r.status, map), {});
+      let best = 0, current = 0;
+      visibleWeeks.forEach(w => {
+        const status = records[w.week_id];
+        if (status === 'present') { current += 1; best = Math.max(best, current); } else { current = 0; }
+      });
+      return best;
+    }
+
     function getMetricClass(value, type) {
       if (type === 'rate') {
         if (value > 0.8) return 'good';
@@ -475,36 +1643,172 @@
       const m = computeMetrics();
       const overallClass = getMetricClass(m.overallRate, 'rate');
       const reportingClass = getMetricClass(m.reportingCompleteness, 'rate');
-      const zeroClass = getMetricClass(m.zeroAttendanceMembers.length, 'zero');
-      const streakClass = getMetricClass(m.streakMembers.length, 'streak');
+
+      // Build streak leaderboard with medals (top 10)
+      const streaks = DATA.people
+        .filter(p => p.active)
+        .map(p => ({ name: p.name, streak: getBestStreak(p.person_id) }))
+        .filter(s => s.streak >= 1)
+        .sort((a, b) => b.streak - a.streak)
+        .slice(0, 10);
+      const medals = ['🥇', '🥈', '🥉'];
+
+      const zeroList = m.zeroAttendanceMembers.slice(0, 5);
+
       metricsEl.innerHTML = `
-        <div class="metric ${overallClass}">
-          <div class="label">Overall attendance</div>
-          <div class="value">${formatPercent(m.overallRate)}</div>
+        <div class="metrics-table-wrapper">
+          <table class="metrics-table">
+            <thead>
+              <tr><th>Metric</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Overall attendance</td>
+                <td class="value ${overallClass}">${formatPercent(m.overallRate)}</td>
+              </tr>
+              <tr>
+                <td>Active members</td>
+                <td class="value neutral">${m.activeMembers}</td>
+              </tr>
+              <tr>
+                <td>Usrahs</td>
+                <td class="value neutral">${m.usrahCount}</td>
+              </tr>
+              <tr>
+                <td>Reporting completeness</td>
+                <td class="value ${reportingClass}">${formatPercent(m.reportingCompleteness)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div class="metric neutral">
-          <div class="label">Active members</div>
-          <div class="value">${m.activeMembers}</div>
-        </div>
-        <div class="metric neutral">
-          <div class="label">Usrahs</div>
-          <div class="value">${m.usrahCount}</div>
-        </div>
-        <div class="metric ${reportingClass}">
-          <div class="label">Reporting completeness</div>
-          <div class="value">${formatPercent(m.reportingCompleteness)}</div>
-        </div>
-        <div class="metric ${zeroClass}">
-          <div class="label">0 attendance last 4 weeks</div>
-          <div class="value">${m.zeroAttendanceMembers.length}</div>
-          <div class="badge" title="${m.zeroAttendanceMembers.map(p => p.name).join(", ") || "None"}">${m.zeroAttendanceMembers.slice(0,3).map(p => p.name).join(", ") || "None"}</div>
-        </div>
-        <div class="metric ${streakClass}">
-          <div class="label">Streaks (3+ weeks)</div>
-          <div class="value">${m.streakMembers.length}</div>
-          <div class="badge" title="${m.streakMembers.map(p => p.name).join(", ") || "None"}">${m.streakMembers.slice(0,3).map(p => p.name).join(", ") || "None"}</div>
+
+        <div class="leaderboards">
+          <div class="leaderboard leaderboard-streaks" aria-label="Top Streaks">
+            <h3>🎮 TOP STREAKS</h3>
+            ${streaks.length ? streaks.map((s, idx) => `
+              <div class="leaderboard-item">
+                <span class="lb-name">${medals[idx] ? medals[idx] + ' ' : ''}${s.name}</span>
+                <span class="lb-score">${s.streak} wks</span>
+              </div>
+            `).join('') : '<div class="muted">No streaks yet.</div>'}
+          </div>
+          <div class="leaderboard leaderboard-attention" aria-label="Needs Attention">
+            <h3>⚠️ ATTENTION NEEDED</h3>
+            ${(function() {
+              const threePlusWeeks = DATA.people
+                .filter(p => p.active)
+                .map(p => {
+                  const recentWeeks = visibleWeeks.slice(-3).map(w => w.week_id);
+                  const records = DATA.attendance.filter(a => a.person_id === p.person_id && recentWeeks.includes(a.week_id));
+                  const hadPresence = records.some(r => r.status === 'present');
+                  return { name: p.name, noShow: !hadPresence };
+                })
+                .filter(x => x.noShow)
+                .slice(0, 10);
+              return threePlusWeeks.length ? threePlusWeeks.map(p => `
+                <div class="leaderboard-item">
+                  <span class="lb-name">${p.name}</span>
+                  <span class="lb-score">0 in 3 wks</span>
+                </div>
+              `).join('') : '<div class="muted">All good!</div>';
+            })()}
+          </div>
         </div>
       `;
+    }
+
+    const LEADERBOARD_FILTERS = { metric: 'rating', sort: 'desc', search: '' };
+
+    function renderUsrahLeaderboard() {
+      const box = document.getElementById('usrah-leaderboard');
+      if (!box) return;
+      const search = LEADERBOARD_FILTERS.search.toLowerCase();
+
+      // Precompute max members for normalization
+      const maxMembers = Math.max(1, ...DATA.usrah.map(u => usrahSummary(u.usrah_id).memberCount));
+
+      const rowsRaw = DATA.usrah.map(u => {
+        const s = usrahSummary(u.usrah_id);
+        const trendScore = s.trend === '+' ? 1 : s.trend === '-' ? 0.2 : 0.5; // normalize 0..1
+        const membersNorm = s.memberCount / maxMembers; // 0..1
+        const rating = Math.round(((s.attendanceRate + s.completeness + trendScore + membersNorm) / 4) * 100);
+        return {
+          id: u.usrah_id,
+          name: u.usrah_name,
+          metrics: {
+            rating,
+            attendance: s.attendanceRate,
+            completeness: s.completeness,
+            members: s.memberCount,
+            trend: s.trend
+          }
+        };
+      }).filter(r => !search || r.name.toLowerCase().includes(search));
+
+      const metricKey = ['rating','attendance','completeness','members','trend'].includes(LEADERBOARD_FILTERS.metric) ? LEADERBOARD_FILTERS.metric : 'rating';
+      const valForSort = (m) => {
+        if (metricKey === 'trend') return m.trend === '+' ? 3 : m.trend === '-' ? 1 : 2;
+        return m[metricKey];
+      };
+      rowsRaw.sort((a, b) => {
+        const av = valForSort(a.metrics);
+        const bv = valForSort(b.metrics);
+        return LEADERBOARD_FILTERS.sort === 'asc' ? av - bv : bv - av;
+      });
+
+      // Build table
+      const arrow = LEADERBOARD_FILTERS.sort === 'asc' ? '▲' : '▼';
+      const th = (label, key, showArrow=false) => `
+        <th>
+          <span class="usrah-sort ${metricKey === key ? 'active' : ''}" data-metric="${key}">
+            ${label} ${showArrow && metricKey === key ? `<span class="arrow">${arrow}</span>` : ''}
+          </span>
+        </th>`;
+
+      const fmtPct = (n) => `${Math.round(n * 100)}%`;
+      const rowsHtml = rowsRaw.map((r, i) => `
+        <tr>
+          <td class="rank">${i + 1}</td>
+          <td class="name">${r.name}</td>
+          <td class="val">${r.metrics.rating}</td>
+          <td>${fmtPct(r.metrics.attendance)}</td>
+          <td>${fmtPct(r.metrics.completeness)}</td>
+          <td>${r.metrics.members}</td>
+          <td>${r.metrics.trend}</td>
+        </tr>
+      `).join('');
+
+      box.innerHTML = `
+        <table class="usrah-table" aria-label="Usrah Metrics">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              ${th('Usrah','name')}
+              ${th('Rating','rating',true)}
+              ${th('Attendance','attendance')}
+              ${th('Completeness','completeness')}
+              ${th('Members','members')}
+              ${th('Trend','trend')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || `<tr><td colspan="7" class="muted">No data yet.</td></tr>`}
+          </tbody>
+        </table>
+      `;
+
+      // Header click handlers to change metric and toggle sort
+      box.querySelectorAll('.usrah-sort').forEach(el => {
+        el.addEventListener('click', () => {
+          const key = el.getAttribute('data-metric');
+          if (LEADERBOARD_FILTERS.metric === key) {
+            LEADERBOARD_FILTERS.sort = LEADERBOARD_FILTERS.sort === 'asc' ? 'desc' : 'asc';
+          } else {
+            LEADERBOARD_FILTERS.metric = key;
+          }
+          renderUsrahLeaderboard();
+        });
+      });
     }
 
     function getStatus(personId, weekId) {
@@ -567,25 +1871,67 @@
       }
       emptyState.style.display = "none";
 
-      const headerCells = [""].concat(visibleWeeks.map(w => {
-        const date = new Date(w.start_date);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      }));
-      grid.innerHTML = headerCells.map((text, idx) => `
-        <div class="cell header ${idx === 0 ? "name" : ""}">${text}</div>
+      const headerCells = [
+        { text: "", className: "name" },
+        ...visibleWeeks.map(w => ({
+          text: new Date(w.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          className: ""
+        })),
+        { text: "Summary", className: "summary-header" }
+      ];
+      grid.innerHTML = headerCells.map(({ text, className }) => `
+        <div class="cell header ${className}">${text}</div>
       `).join("");
-
       DATA.usrah.forEach(usrah => {
-        // Add usra header row
-        grid.innerHTML += `<div class="cell usra-header" data-usrah="${usrah.usrah_id}" style="grid-column: 1 / -1; cursor: pointer;">${usrah.usrah_name} ▼</div>`;
+        const summary = usrahSummary(usrah.usrah_id);
+        const summaryColStart = visibleWeeks.length + 2;
+        const summaryColEnd = summaryColStart + 1;
         const members = DATA.people.filter(p => p.usrah_id === usrah.usrah_id);
+        const blockSpan = members.length + 1;
+        // Add usra header row with embedded summary that spans the block
+        grid.innerHTML += `
+          <div class="cell usra-header" data-usrah="${usrah.usrah_id}" style="grid-column: 1 / ${summaryColStart}; cursor: pointer;">
+            ${usrah.usrah_name} [-]
+          </div>
+          <div class="cell usra-summary" data-usrah="${usrah.usrah_id}" style="grid-column: ${summaryColStart} / ${summaryColEnd}; grid-row: span ${blockSpan};">
+            <strong>${usrah.usrah_name}</strong>
+            <div class="gauges-grid">
+              <div class="gauge-row">
+                <div class="gauge-label">Attendance</div>
+                ${renderGauge(Math.round(summary.attendanceRate * 100), 100, '%')}
+              </div>
+              <div class="gauge-row">
+                <div class="gauge-label">Completeness</div>
+                ${renderGauge(Math.round(summary.completeness * 100), 100, '%')}
+              </div>
+              <div class="gauge-row">
+                <div class="gauge-label">Trend</div>
+                ${renderTrendGauge(summary.trend)}
+              </div>
+              <div class="gauge-row">
+                <div class="gauge-label">Active Members</div>
+                ${renderGauge(summary.memberCount, members.length, '')}
+              </div>
+            </div>
+          </div>
+        `;
         members.forEach(member => {
-          grid.innerHTML += `<div class="cell name ${member.active ? "" : "inactive"}" data-usrah="${usrah.usrah_id}" aria-label="${member.name}">${member.name}${member.active ? ' <span class="verified">✔</span>' : ''}</div>`;
+          const badgeHtml = `
+            <span class="badges" aria-hidden="true">
+              ${member.is_member ? '<span class="badge-icon member" title="MAS Member">✔</span>' : ''}
+              ${member.development_plan ? '<span class="badge-icon plan" title="Dev Plan">✎</span>' : ''}
+              ${member.leadership ? '<span class="badge-icon leadership" title="Leadership">★</span>' : ''}
+            </span>
+          `;
+          const verifiedBadge = '';
+          grid.innerHTML += `<div class="cell name ${member.active ? "" : "inactive"}" data-usrah="${usrah.usrah_id}" aria-label="${member.name}">${member.name}${badgeHtml}${verifiedBadge}</div>`;
           visibleWeeks.forEach(week => {
             const status = getStatus(member.person_id, week.week_id);
-            const label = `${member.name}, ${week.week_id}, ${status}`;
+            const statusDesc = status === 'present' ? 'Present' : status === 'absent' ? 'Absent' : status === 'excused' ? 'Excused' : 'Not Reported';
+            const dateRange = `${new Date(week.start_date).toLocaleDateString()} - ${new Date(week.end_date).toLocaleDateString()}`;
+            const tooltip = `${member.name} (${usrah.usrah_name})\nWeek: ${week.week_id} (${dateRange})\nStatus: ${statusDesc}`;
             grid.innerHTML += `
-              <div class="cell ${status}" data-usrah="${usrah.usrah_id}" aria-label="${label}" title="${label}"></div>
+              <div class="cell ${status} tooltip" data-usrah="${usrah.usrah_id}" data-tooltip="${tooltip}"></div>
             `;
           });
         });
@@ -603,20 +1949,202 @@
       }
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    let currentUsra = null;
+    let attendanceData = {};
+
+    function authenticateUsra() {
+      const code = document.getElementById('submission-code').value.trim().toLowerCase();
+      const errorEl = document.getElementById('auth-error');
+      const formEl = document.getElementById('attendance-form');
+      
+      if (!code) {
+        errorEl.textContent = 'Please enter a submission code';
+        errorEl.style.display = 'block';
+        return;
+      }
+      
+      const usra = CODE_TO_USRAH.get(code);
+      if (!usra) {
+        errorEl.textContent = 'Invalid submission code. Please try again.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      
+      currentUsra = usra;
+      errorEl.style.display = 'none';
+      document.getElementById('usra-title').textContent = `Submit attendance for ${usra.usrah_name}`;
+      
+      // Populate week selector
+      const weekSelect = document.getElementById('week-select');
+      weekSelect.innerHTML = '<option value="">-- Select a week --</option>' + 
+        weekOptions.map(w => `<option value="${w.week_id}">${w.week_id} (${new Date(w.start_date).toLocaleDateString()} - ${new Date(w.end_date).toLocaleDateString()})</option>`).join('');
+      
+      formEl.classList.add('active');
+      attendanceData = {};
+    }
+
+    function updateAttendanceForm() {
+      const weekId = document.getElementById('week-select').value;
+      const membersList = document.getElementById('members-list');
+      
+      if (!weekId || !currentUsra) {
+        membersList.innerHTML = '';
+        return;
+      }
+      
+      const members = DATA.people.filter(p => p.usrah_id === currentUsra.usrah_id && p.active);
+      
+      membersList.innerHTML = members.map(member => {
+        const currentStatus = attendanceData[member.person_id] || '';
+        return `
+          <div class="member-attendance">
+            <span class="member-name">${member.name}</span>
+            <div class="attendance-buttons">
+              <button class="${currentStatus === 'present' ? 'selected' : ''}" 
+                      onclick="markAttendance('${member.person_id}', 'present')">Present</button>
+              <button class="${currentStatus === 'absent' ? 'selected' : ''}" 
+                      onclick="markAttendance('${member.person_id}', 'absent')">Absent</button>
+              <button class="${currentStatus === 'excused' ? 'selected' : ''}" 
+                      onclick="markAttendance('${member.person_id}', 'excused')">Excused</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function markAttendance(personId, status) {
+      attendanceData[personId] = status;
+      updateAttendanceForm();
+    }
+
+    async function submitAttendance() {
+      const weekId = document.getElementById('week-select').value;
+      const messageEl = document.getElementById('submit-message');
+      
+      if (!weekId) {
+        messageEl.innerHTML = '<span class="error">Please select a week</span>';
+        return;
+      }
+      
+      const members = DATA.people.filter(p => p.usrah_id === currentUsra.usrah_id && p.active);
+      const allMarked = members.every(m => attendanceData[m.person_id]);
+      
+      if (!allMarked) {
+        messageEl.innerHTML = '<span class="error">Please mark attendance for all members</span>';
+        return;
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      const newRecords = [];
+      
+      members.forEach(member => {
+        const existingIndex = DATA.attendance.findIndex(
+          a => a.person_id === member.person_id && a.week_id === weekId
+        );
+        
+        const record = {
+          person_id: member.person_id,
+          week_id: weekId,
+          status: attendanceData[member.person_id],
+          reported_by: currentUsra.usrah_id,
+          reported_at: today
+        };
+        
+        if (existingIndex >= 0) {
+          DATA.attendance[existingIndex] = record;
+        } else {
+          DATA.attendance.push(record);
+          newRecords.push(record);
+        }
+      });
+      
+      // Submit to Google Sheets if enabled
+      if (CONFIG.USE_GOOGLE_SHEETS && newRecords.length > 0) {
+        try {
+          messageEl.innerHTML = '<span class="muted">Submitting...</span>';
+          await submitAttendanceToGoogleSheets(newRecords);
+          messageEl.innerHTML = '<span class="success">✓ Attendance submitted successfully!</span>';
+        } catch (error) {
+          messageEl.innerHTML = '<span class="error">Failed to submit to Google Sheets. Changes saved locally.</span>';
+          console.error(error);
+          return;
+        }
+      } else {
+        messageEl.innerHTML = '<span class="success">✓ Attendance submitted successfully!</span>';
+      }
+      // Arcade feedback
+      awardPoints(100, 'Attendance submitted');
+      
+      // Refresh the dashboard
+      renderMetrics();
+      renderUsrahLeaderboard();
+      renderGrid();
+      
+      // Reset after a delay
+      setTimeout(() => {
+        resetForm();
+      }, 2000);
+    }
+
+    function resetForm() {
+      document.getElementById('submission-code').value = '';
+      document.getElementById('attendance-form').classList.remove('active');
+      document.getElementById('members-list').innerHTML = '';
+      document.getElementById('submit-message').innerHTML = '';
+      currentUsra = null;
+      attendanceData = {};
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      // Load data from Google Sheets if enabled
+      if (CONFIG.USE_GOOGLE_SHEETS) {
+        const sheetData = await loadDataFromGoogleSheets();
+        if (sheetData) {
+          // Update DATA with sheet data
+          Object.assign(DATA, sheetData);
+          
+          // Rebuild lookup maps
+          PEOPLE_BY_ID = new Map(DATA.people.map(p => [p.person_id, p]));
+          USRAH_BY_ID = new Map(DATA.usrah.map(u => [u.usrah_id, u]));
+          CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code.toLowerCase(), u]));
+          
+          console.log('Data loaded from Google Sheets successfully');
+        }
+      }
+      
       initWarnings();
       renderMetrics();
+      renderUsrahLeaderboard();
       renderGrid();
+      renderD3Visualization();
+      
+      // Visualization controls
+      document.getElementById('viz-group')?.addEventListener('change', (e) => {
+        playSound('ach');
+        vizSettings.groupBy = e.target.value;
+        renderD3Visualization();
+      });
+      document.getElementById('viz-sort')?.addEventListener('change', (e) => {
+        playSound('ach');
+        vizSettings.sortBy = e.target.value;
+        renderD3Visualization();
+      });
+      document.getElementById('viz-filter')?.addEventListener('input', (e) => {
+        vizSettings.filter = e.target.value;
+        renderD3Visualization();
+      });
+      
+      // Leaderboard filters (header-click only now)
       // Add toggle for usra headers
       document.querySelectorAll('.usra-header').forEach(header => {
         header.addEventListener('click', () => {
           const usrahId = header.dataset.usrah;
           const cells = document.querySelectorAll(`.cell[data-usrah="${usrahId}"]:not(.usra-header)`);
-          const isCollapsed = header.textContent.includes('▶');
+          const isCollapsed = header.textContent.includes('[+]');
           cells.forEach(cell => {
             cell.style.display = isCollapsed ? '' : 'none';
           });
-          header.textContent = isCollapsed ? header.textContent.replace('▶', '▼') : header.textContent.replace('▼', '▶');
+          header.textContent = isCollapsed ? header.textContent.replace('[+]', '[-]') : header.textContent.replace('[-]', '[+]');
         });
       });
     });
