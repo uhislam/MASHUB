@@ -6,6 +6,10 @@
   <title>Admin Panel - MAS Houston Tarbiya Health</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+    window.supabaseCreateClient = createClient;
+  </script>
   <style>
     :root {
       --accent: #22d3ee;
@@ -495,8 +499,12 @@
   </div>
 
   <script>
-    // Load data from localStorage or initialize with empty structure
-    let DATA = JSON.parse(localStorage.getItem('usrahData')) || {
+    // ============ SUPABASE INITIALIZATION ============
+    const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
+    
+    let supabase;
+    let DATA = {
       settings: { windowMonths: 2, USE_GOOGLE_SHEETS: false },
       usrah: [],
       people: [],
@@ -504,8 +512,31 @@
       attendance: []
     };
 
-    function saveData() {
-      localStorage.setItem('usrahData', JSON.stringify(DATA));
+    async function initSupabase() {
+      supabase = window.supabaseCreateClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      await loadDataFromSupabase();
+    }
+
+    async function loadDataFromSupabase() {
+      try {
+        const [usrahRes, peopleRes, weeksRes, attendanceRes] = await Promise.all([
+          supabase.from('usrah').select('*'),
+          supabase.from('people').select('*'),
+          supabase.from('weeks').select('*'),
+          supabase.from('attendance').select('*')
+        ]);
+
+        if (usrahRes.data) DATA.usrah = usrahRes.data;
+        if (peopleRes.data) DATA.people = peopleRes.data;
+        if (weeksRes.data) DATA.weeks = weeksRes.data;
+        if (attendanceRes.data) DATA.attendance = attendanceRes.data;
+
+        console.log('✓ Data loaded from Supabase');
+        return true;
+      } catch (err) {
+        console.warn('Supabase error:', err.message);
+        return false;
+      }
     }
 
     function showMessage(elementId, message, isError = false) {
@@ -548,25 +579,34 @@
       ).join('');
     }
 
-    document.getElementById('usrah-form').addEventListener('submit', (e) => {
+    document.getElementById('usrah-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('usrah-name').value;
       const code = document.getElementById('usrah-code').value;
-      const id = 'u' + (DATA.usrah.length + 1);
       
-      DATA.usrah.push({ usrah_id: id, usrah_name: name, submission_code: code });
-      saveData();
-      renderUsrahs();
-      showMessage('usrah-message', '✓ Usrah added successfully!');
-      e.target.reset();
+      try {
+        const { data, error } = await supabase.from('usrah').insert([
+          { usrah_name: name, submission_code: code }
+        ]);
+        if (error) throw error;
+        
+        await loadDataFromSupabase();
+        renderUsrahs();
+        showMessage('usrah-message', '✓ Usrah added successfully!');
+        e.target.reset();
+      } catch (err) {
+        showMessage('usrah-message', 'Error: ' + err.message, true);
+      }
     });
 
     function deleteUsrah(id) {
       if (confirm('Delete this usrah? Members will remain but lose their usrah association.')) {
-        DATA.usrah = DATA.usrah.filter(u => u.usrah_id !== id);
-        saveData();
-        renderUsrahs();
-        showMessage('usrah-message', '✓ Usrah deleted');
+        supabase.from('usrah').delete().eq('usrah_id', id).then(() => {
+          loadDataFromSupabase().then(() => {
+            renderUsrahs();
+            showMessage('usrah-message', '✓ Usrah deleted');
+          });
+        });
       }
     }
 
@@ -601,35 +641,41 @@
       ).join('');
     }
 
-    document.getElementById('member-form').addEventListener('submit', (e) => {
+    document.getElementById('member-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const id = 'p' + (DATA.people.length + 1);
       
-      DATA.people.push({
-        person_id: id,
-        name: document.getElementById('member-name').value,
-        usrah_id: document.getElementById('member-usrah').value,
-        active: document.getElementById('member-active').checked,
-        is_member: document.getElementById('member-is-member').checked,
-        development_plan: document.getElementById('member-dev-plan').checked,
-        leadership: document.getElementById('member-leadership').checked
-      });
-      
-      saveData();
-      renderMembers();
-      showMessage('member-message', '✓ Member added successfully!');
-      e.target.reset();
-      document.getElementById('member-active').checked = true;
+      try {
+        const { data, error } = await supabase.from('people').insert([{
+          name: document.getElementById('member-name').value,
+          usrah_id: document.getElementById('member-usrah').value,
+          active: document.getElementById('member-active').checked,
+          is_member: document.getElementById('member-is-member').checked,
+          development_plan: document.getElementById('member-dev-plan').checked,
+          leadership: document.getElementById('member-leadership').checked
+        }]);
+        if (error) throw error;
+        
+        await loadDataFromSupabase();
+        renderMembers();
+        showMessage('member-message', '✓ Member added successfully!');
+        e.target.reset();
+        document.getElementById('member-active').checked = true;
+      } catch (err) {
+        showMessage('member-message', 'Error: ' + err.message, true);
+      }
     });
 
     function deleteMember(id) {
       if (confirm('Delete this member? Their attendance records will also be removed.')) {
-        DATA.people = DATA.people.filter(p => p.person_id !== id);
-        DATA.attendance = DATA.attendance.filter(a => a.person_id !== id);
-        saveData();
-        renderMembers();
-        renderAttendance();
-        showMessage('member-message', '✓ Member deleted');
+        supabase.from('people').delete().eq('person_id', id).then(() => {
+          supabase.from('attendance').delete().eq('person_id', id).then(() => {
+            loadDataFromSupabase().then(() => {
+              renderMembers();
+              renderAttendance();
+              showMessage('member-message', '✓ Member deleted');
+            });
+          });
+        });
       }
     }
 
@@ -656,29 +702,37 @@
       ).join('');
     }
 
-    document.getElementById('week-form').addEventListener('submit', (e) => {
+    document.getElementById('week-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      DATA.weeks.push({
-        week_id: document.getElementById('week-id').value,
-        start_date: document.getElementById('week-start').value,
-        end_date: document.getElementById('week-end').value
-      });
-      
-      saveData();
-      renderWeeks();
-      showMessage('week-message', '✓ Week added successfully!');
-      e.target.reset();
+      try {
+        const { data, error } = await supabase.from('weeks').insert([{
+          week_id: document.getElementById('week-id').value,
+          start_date: document.getElementById('week-start').value,
+          end_date: document.getElementById('week-end').value
+        }]);
+        if (error) throw error;
+        
+        await loadDataFromSupabase();
+        renderWeeks();
+        showMessage('week-message', '✓ Week added successfully!');
+        e.target.reset();
+      } catch (err) {
+        showMessage('week-message', 'Error: ' + err.message, true);
+      }
     });
 
     function deleteWeek(id) {
       if (confirm('Delete this week? Attendance records for this week will also be removed.')) {
-        DATA.weeks = DATA.weeks.filter(w => w.week_id !== id);
-        DATA.attendance = DATA.attendance.filter(a => a.week_id !== id);
-        saveData();
-        renderWeeks();
-        renderAttendance();
-        showMessage('week-message', '✓ Week deleted');
+        supabase.from('weeks').delete().eq('week_id', id).then(() => {
+          supabase.from('attendance').delete().eq('week_id', id).then(() => {
+            loadDataFromSupabase().then(() => {
+              renderWeeks();
+              renderAttendance();
+              showMessage('week-message', '✓ Week deleted');
+            });
+          });
+        });
       }
     }
 
@@ -699,7 +753,7 @@
         );
       }
 
-      tbody.innerHTML = records.map((a, idx) => `
+      tbody.innerHTML = records.map((a) => `
         <tr>
           <td>${a.personName}</td>
           <td>${a.week_id}</td>
@@ -708,7 +762,7 @@
           <td>${a.service_rating || '-'}</td>
           <td>${a.curriculum_rating || '-'}</td>
           <td class="actions">
-            <button class="btn btn-danger" onclick="deleteAttendance(${idx})">Delete</button>
+            <button class="btn btn-danger" onclick="deleteAttendance(${a.id})">Delete</button>
           </td>
         </tr>
       `).join('');
@@ -716,7 +770,7 @@
 
     document.getElementById('attendance-search')?.addEventListener('input', renderAttendance);
 
-    document.getElementById('attendance-form').addEventListener('submit', (e) => {
+    document.getElementById('attendance-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       
       const record = {
@@ -730,28 +784,40 @@
         curriculum_rating: parseInt(document.getElementById('attendance-curriculum').value)
       };
       
-      DATA.attendance.push(record);
-      saveData();
-      renderAttendance();
-      showMessage('attendance-message', '✓ Attendance record added!');
+      try {
+        const { data, error } = await supabase.from('attendance').insert([record]);
+        if (error) throw error;
+        
+        await loadDataFromSupabase();
+        renderAttendance();
+        showMessage('attendance-message', '✓ Attendance record added!');
+      } catch (err) {
+        showMessage('attendance-message', 'Error: ' + err.message, true);
+      }
     });
 
-    function deleteAttendance(idx) {
+    function deleteAttendance(id) {
       if (confirm('Delete this attendance record?')) {
-        DATA.attendance.splice(idx, 1);
-        saveData();
-        renderAttendance();
-        showMessage('attendance-message', '✓ Record deleted');
+        supabase.from('attendance').delete().eq('id', id).then(() => {
+          loadDataFromSupabase().then(() => {
+            renderAttendance();
+            showMessage('attendance-message', '✓ Record deleted');
+          });
+        });
       }
     }
 
     // SETTINGS
-    document.getElementById('settings-form').addEventListener('submit', (e) => {
+    document.getElementById('settings-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      DATA.settings.windowMonths = parseInt(document.getElementById('settings-window').value);
-      DATA.settings.USE_GOOGLE_SHEETS = document.getElementById('settings-google-sheets').checked;
-      saveData();
-      showMessage('settings-message', '✓ Settings saved!');
+      try {
+        // For now, settings are stored in DATA object only
+        DATA.settings.windowMonths = parseInt(document.getElementById('settings-window').value);
+        DATA.settings.USE_GOOGLE_SHEETS = document.getElementById('settings-google-sheets').checked;
+        showMessage('settings-message', '✓ Settings saved locally!');
+      } catch (err) {
+        showMessage('settings-message', 'Error: ' + err.message, true);
+      }
     });
 
     function loadSettings() {
@@ -793,30 +859,12 @@
     }
 
     function resetData() {
-      if (confirm('Are you sure? This will delete ALL data and restore sample data!')) {
-        DATA = {
-          settings: { windowMonths: 2, USE_GOOGLE_SHEETS: false },
-          usrah: [
-            { usrah_id: "u1", usrah_name: "North River", submission_code: "NR-8432" },
-            { usrah_id: "u2", usrah_name: "East Grove", submission_code: "EG-1923" }
-          ],
-          people: [
-            { person_id: "p1", name: "Aisha Rahman", usrah_id: "u1", active: true, is_member: true, development_plan: true, leadership: false },
-            { person_id: "p2", name: "Fatimah Khan", usrah_id: "u1", active: true, is_member: false, development_plan: false, leadership: false }
-          ],
-          weeks: [
-            { week_id: "2025-W09", start_date: "2025-03-03", end_date: "2025-03-09" },
-            { week_id: "2025-W10", start_date: "2025-03-10", end_date: "2025-03-16" }
-          ],
-          attendance: []
-        };
-        saveData();
-        renderAll();
-        alert('Data reset complete!');
+      if (confirm('Are you sure? This will delete ALL data in Supabase and restore sample data!')) {
+        alert('Reset functionality requires manual SQL execution. Please contact your admin.');
       }
     }
 
-    function renderAll() {
+    async function renderAll() {
       renderUsrahs();
       renderMembers();
       renderWeeks();
@@ -825,7 +873,10 @@
     }
 
     // Initialize on load
-    renderAll();
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initSupabase();
+      renderAll();
+    });
   </script>
 </body>
 </html>

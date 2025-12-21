@@ -6,7 +6,10 @@
   <title>Submit Usrah Attendance</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <script src="api-client.js"></script>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+    window.supabaseCreateClient = createClient;
+  </script>
   <style>
     :root {
       --accent: #22d3ee;
@@ -151,25 +154,26 @@
       attendance: []
     };
 
-    // API Integration
-    const API_URL = 'http://localhost:3000';
-    const api = new MASHUBApi(API_URL);
-
-    async function loadDataFromBackend() {
+    // Supabase Integration
+    async function loadDataFromSupabase() {
       try {
-        const [usrahData, peopleData, weeksData] = await Promise.all([
-          api.loadUsrah(),
-          api.loadPeople(),
-          api.loadWeeks()
+        const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
+        const supabase = window.supabaseCreateClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        const [usrahRes, peopleRes, weeksRes] = await Promise.all([
+          supabase.from('usrah').select('*'),
+          supabase.from('people').select('*'),
+          supabase.from('weeks').select('*')
         ]);
         
-        DATA.usrah = usrahData;
-        DATA.people = peopleData;
-        DATA.weeks = weeksData;
+        if (usrahRes.data) DATA.usrah = usrahRes.data;
+        if (peopleRes.data) DATA.people = peopleRes.data;
+        if (weeksRes.data) DATA.weeks = weeksRes.data;
         
-        console.log('✓ Data loaded from backend');
+        console.log('✓ Data loaded from Supabase');
       } catch (err) {
-        console.warn('Backend not available, using fallback data:', err.message);
+        console.warn('Supabase not available, using fallback data:', err.message);
       }
     }
 
@@ -188,12 +192,12 @@
 
     // Initialize usrah dropdown
     async function initializeUsrahDropdown() {
-      await loadDataFromBackend();
+      await loadDataFromSupabase();
       const select = document.getElementById('usrah-select');
       select.innerHTML = '<option value="">-- Choose your Usrah --</option>' +
         DATA.usrah.map(u => `<option value="${u.usrah_id}">${u.usrah_name}</option>`).join('');
     }
-    }
+    
 
     function selectUsrah() {
       const usrahId = document.getElementById('usrah-select').value;
@@ -319,7 +323,14 @@
       });
       
       try {
-        await api.submitAttendance(records);
+        // Initialize Supabase client
+        const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
+        const supabase = window.supabaseCreateClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        const { data, error } = await supabase.from('attendance').insert(records).select();
+        if (error) throw error;
+        
         messageEl.innerHTML = '<span class="success">✓ Attendance submitted successfully! Redirecting…</span>';
         setTimeout(() => { window.location.href = 'index.html'; }, 1200);
       } catch (err) {
@@ -342,7 +353,10 @@
     }
 
     // Initialize on page load
-    document.addEventListener('DOMContentLoaded', initializeUsrahDropdown);
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadDataFromSupabase();
+      initializeUsrahDropdown();
+    });
   </script>
 </body>
 </html>

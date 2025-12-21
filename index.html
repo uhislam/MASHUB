@@ -6,7 +6,10 @@
   <title>MAS Houston tracking tool v2</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <script src="api-client.js"></script>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+    window.supabaseCreateClient = createClient;
+  </script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     :root {
@@ -997,51 +1000,48 @@
     // Derived maps for quick lookups.
     let PEOPLE_BY_ID = new Map(DATA.people.map(p => [p.person_id, p]));
     let USRAH_BY_ID = new Map(DATA.usrah.map(u => [u.usrah_id, u]));
-    let CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code.toLowerCase(), u]));
+    let CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code?.toLowerCase?.() || '', u]));
 
-    // API Integration: Try to load data from backend, fallback to hardcoded DATA
-    const API_URL = 'http://localhost:3000';
-    const api = new MASHUBApi(API_URL);
-    
-    async function initializeDataFromBackend() {
+    // ============ SUPABASE INTEGRATION ============
+    async function loadDataFromSupabase() {
       try {
-        // Try to load from backend
-        const [usrahData, peopleData, weeksData, attendanceData] = await Promise.all([
-          api.loadUsrah(),
-          api.loadPeople(),
-          api.loadWeeks(),
-          api.loadAttendance()
+        const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
+        const supabase = window.supabaseCreateClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        const [usrahRes, peopleRes, weeksRes, attendanceRes] = await Promise.all([
+          supabase.from('usrah').select('*'),
+          supabase.from('people').select('*'),
+          supabase.from('weeks').select('*').order('week_id'),
+          supabase.from('attendance').select('*')
         ]);
         
-        // Replace hardcoded DATA with backend data
-        DATA.usrah = usrahData;
-        DATA.people = peopleData;
-        DATA.weeks = weeksData;
-        DATA.attendance = attendanceData;
+        if (usrahRes.error) throw usrahRes.error;
+        if (peopleRes.error) throw peopleRes.error;
+        if (weeksRes.error) throw weeksRes.error;
+        if (attendanceRes.error) throw attendanceRes.error;
+        
+        // Update DATA with Supabase results
+        DATA.usrah = usrahRes.data;
+        DATA.people = peopleRes.data;
+        DATA.weeks = weeksRes.data;
+        DATA.attendance = attendanceRes.data;
         
         // Reinitialize lookup maps
         PEOPLE_BY_ID = new Map(DATA.people.map(p => [p.person_id, p]));
         USRAH_BY_ID = new Map(DATA.usrah.map(u => [u.usrah_id, u]));
         CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code?.toLowerCase?.() || '', u]));
         
-        console.log('✓ Data loaded from backend');
-        renderAllDashboards();
+        console.log('✓ Data loaded from Supabase');
+        return true;
       } catch (err) {
-        console.warn('Backend not available, using hardcoded data:', err.message);
-        // Use the hardcoded DATA already loaded
-        renderAllDashboards();
+        console.warn('Supabase connection failed, using fallback data:', err.message);
+        return false;
       }
     }
 
-    const latestWeekEnd = DATA.weeks.reduce((latest, week) => {
-      const end = new Date(week.end_date);
-      return end > latest ? end : latest;
-    }, new Date(0));
-    const cutoffDate = new Date(latestWeekEnd);
-    cutoffDate.setMonth(cutoffDate.getMonth() - DATA.settings.windowMonths);
-    const visibleWeeks = DATA.weeks.filter(week => new Date(week.end_date) >= cutoffDate);
-    const visibleWeekIds = new Set(visibleWeeks.map(w => w.week_id));
-    const weekOptions = [...visibleWeeks].reverse(); // latest first for selection
+    let visibleWeeks = [];
+    let visibleWeekIds = new Set();
 
     function formatPercent(n) {
       if (Number.isNaN(n)) return "0%";
@@ -1754,16 +1754,24 @@
       }
     }
 
-    function renderAllDashboards() {
-      initWarnings();
+    document.addEventListener("DOMContentLoaded", async () => {
+      // Try to load from Supabase, fall back to hardcoded data
+      const loaded = await loadDataFromSupabase();
+      
+      // Recalculate time-based variables after data loads
+      const latestWeekEnd = DATA.weeks.reduce((latest, week) => {
+        const end = new Date(week.end_date);
+        return end > latest ? end : latest;
+      }, new Date(0));
+      const cutoffDate = new Date(latestWeekEnd);
+      cutoffDate.setMonth(cutoffDate.getMonth() - DATA.settings.windowMonths);
+      visibleWeeks = DATA.weeks.filter(week => new Date(week.end_date) >= cutoffDate);
+      visibleWeekIds = new Set(visibleWeeks.map(w => w.week_id));
+      
       renderMetrics();
       renderUsrahLeaderboard();
-      renderMembersTable();
       renderD3Visualization();
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      initializeDataFromBackend();
+      renderMembersTable();
       
       // Members table search
       document.getElementById('members-search')?.addEventListener('input', () => {
