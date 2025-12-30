@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usra Application - Growth is a choice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(180deg, #1a2a4a 0%, #0d1829 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+            font-size: 17px;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80 0%, #22c55e 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 60px 20px 40px;
+            margin-top: 20px;
+        }
+
+        .pixel-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(20px, 5vw, 36px);
+            color: #ffffff;
+            text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .subtitle {
+            font-size: clamp(14px, 3vw, 18px);
+            color: #94a3b8;
+            margin-top: 15px;
+            font-style: italic;
+        }
+
+        /* Container */
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 0 20px 60px;
+        }
+
+        /* Form Card */
+        .form-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: clamp(20px, 5vw, 40px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Section Headers */
+        .section-header {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(12px, 3vw, 16px);
+            color: #4ade80;
+            margin: 30px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(74, 222, 128, 0.3);
+            line-height: 1.6;
+        }
+
+        .section-header:first-child {
+            margin-top: 0;
+        }
+
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+            font-size: clamp(15px, 2.5vw, 17px);
+            font-weight: 500;
+        }
+
+        .required {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="date"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px solid rgba(148, 163, 184, 0.3);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: clamp(14px, 2.5vw, 16px);
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="tel"]:focus,
+        input[type="date"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #4ade80;
+            box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            line-height: 1.6;
+        }
+
+        /* Radio Buttons */
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: clamp(14px, 2.5vw, 16px);
+        }
+
+        input[type="radio"] {
+            margin-right: 8px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            accent-color: #4ade80;
+        }
+
+        /* Conditional Fields */
+        .conditional-field {
+            margin-top: 16px;
+            padding-left: 20px;
+            border-left: 3px solid rgba(74, 222, 128, 0.3);
+        }
+
+        /* Checkbox */
+        .checkbox-group {
+            display: flex;
+            align-items: start;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(74, 222, 128, 0.05);
+            border: 2px solid rgba(74, 222, 128, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-group:hover {
+            background: rgba(74, 222, 128, 0.1);
+            border-color: rgba(74, 222, 128, 0.4);
+        }
+
+        input[type="checkbox"] {
+            margin-top: 4px;
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            accent-color: #4ade80;
+            flex-shrink: 0;
+        }
+
+        .checkbox-label {
+            cursor: pointer;
+            line-height: 1.6;
+            font-size: clamp(14px, 2.5vw, 15px);
+        }
+
+        /* Submit Button - Pixel Art Style */
+        .submit-button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(14px, 3vw, 18px);
+            padding: 18px 40px;
+            background: #4ade80;
+            color: #0f172a;
+            border: 4px solid #22c55e;
+            border-radius: 0;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 
+                6px 6px 0px #22c55e,
+                6px 6px 0px 2px rgba(0, 0, 0, 0.3);
+            transition: all 0.1s ease;
+            width: 100%;
+            margin-top: 30px;
+            position: relative;
+        }
+
+        .submit-button:hover:not(:disabled) {
+            background: #22c55e;
+            transform: translate(2px, 2px);
+            box-shadow: 
+                4px 4px 0px #16a34a,
+                4px 4px 0px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .submit-button:active:not(:disabled) {
+            transform: translate(6px, 6px);
+            box-shadow: none;
+        }
+
+        .submit-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: #0f172a;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Success Message */
+        .success-message {
+            display: none;
+            background: rgba(74, 222, 128, 0.1);
+            border: 2px solid #4ade80;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(10px, 2.5vw, 12px);
+            line-height: 1.8;
+            color: #4ade80;
+        }
+
+        /* Error Message */
+        .error-message {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid #ef4444;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: clamp(12px, 2.5vw, 14px);
+            color: #ef4444;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .header {
+                padding: 40px 15px 30px;
+            }
+
+            .form-card {
+                padding: 20px;
+            }
+
+            .radio-group {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .submit-button {
+                padding: 16px 30px;
+            }
+        }
+
+        /* Pixel decoration */
+        .pixel-corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #4ade80;
+        }
+
+        .pixel-corner.top-left {
+            top: -2px;
+            left: -2px;
+            clip-path: polygon(0 0, 100% 0, 0 100%);
+        }
+
+        .pixel-corner.top-right {
+            top: -2px;
+            right: -2px;
+            clip-path: polygon(100% 0, 100% 100%, 0 0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Progress Bar -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <h1 class="pixel-title">Usra Application.</h1>
+        <p class="subtitle">Start your journey with tarbiya</p>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <div class="form-card">
+            <form id="applicationForm">
+                <!-- Basic Info Section -->
+                <div class="section-header">Basic Info</div>
+                
+                <div class="form-group">
+                    <label for="name">Full Name <span class="required">*</span></label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email <span class="required">*</span></label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number <span class="required">*</span></label>
+                    <input type="tel" id="phone" name="phone" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="birthday">Birthday <span class="required">*</span></label>
+                    <input type="date" id="birthday" name="birthday" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="age">Age <span class="required">*</span></label>
+                    <input type="number" id="age" name="age" min="15" max="100" required>
+                </div>
+
+                <!-- Preferences Section (moved up) -->
+                <div class="section-header">Preferences</div>
+
+                <p class="muted" style="margin-bottom:12px;">This helps us place you with the best-fit usra.</p>
+
+                <div class="form-group">
+                    <label for="localMasjid">Local Masjid <span class="required">*</span></label>
+                    <input type="text" id="localMasjid" name="localMasjid" placeholder="e.g., Masjid Al-Noor" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="classSchedule">Class Schedule</label>
+                    <textarea id="classSchedule" name="classSchedule" placeholder="Type your class schedule or upload below (optional)" rows="4"></textarea>
+                    <label class="upload-label" for="scheduleUpload" style="display:inline-flex; align-items:center; gap:8px; padding:10px 14px; background:#0f1b2f; border:1px solid rgba(148,163,184,0.3); border-radius:10px; cursor:pointer; margin-top:8px; color:#e2e8f0;">
+                        <span style="font-weight:600;">Upload schedule (optional)</span>
+                        <span style="font-size:12px; color:#94a3b8;">PDF, DOC, JPG, PNG</span>
+                    </label>
+                    <input type="file" id="scheduleUpload" name="scheduleUpload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;">
+                </div>
+
+                <div class="form-group">
+                    <label>Usra Preference <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="usraLocation" value="on-campus" required> On Campus
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="usraLocation" value="off-campus"> Off Campus
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="specificPreference">Is there a specific person or usra you want to be with?</label>
+                    <input type="text" id="specificPreference" name="specificPreference" placeholder="Optional">
+                </div>
+
+                <!-- Commitment & Motivation Section -->
+                <div class="section-header">Commitment & Motivation</div>
+
+                <div class="form-group">
+                    <label for="whyUsra">What makes you interested in joining usra? <span class="required">*</span></label>
+                    <textarea id="whyUsra" name="whyUsra" required placeholder="Share your motivation..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Are you currently attending any consistent programs or halaqas at another masjid? <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="attendingPrograms" value="yes" required> Yes
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="attendingPrograms" value="no"> No
+                        </label>
+                    </div>
+                </div>
+
+                <div id="programDetails" class="conditional-field" style="display: none;">
+                    <div class="form-group">
+                        <label for="programDetailsText">What do you attend and for how long?</label>
+                        <textarea id="programDetailsText" name="programDetailsText" placeholder="e.g., Weekly halaqa at Masjid Al-Noor for 6 months"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Are you involved in any consistent volunteering, community service, or committee? <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="volunteeringInvolved" value="yes" required> Yes
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="volunteeringInvolved" value="no"> No
+                        </label>
+                    </div>
+                </div>
+
+                <div id="volunteerDetails" class="conditional-field" style="display: none;">
+                    <div class="form-group">
+                        <label for="volunteerDetailsText">What are you involved in and for how long?</label>
+                        <textarea id="volunteerDetailsText" name="volunteerDetailsText" placeholder="e.g., Youth committee at local masjid for 1 year"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="mentors">Do you have any mentors or references who can vouch for your readiness for usra?</label>
+                    <textarea id="mentors" name="mentors" placeholder="List names and relationship..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="contractRead" name="contractRead" required>
+                        <label for="contractRead" class="checkbox-label">
+                            I confirm that I have read and understand the <a href="https://drive.google.com/file/d/155loKVAxi1S_S4z_1LvTXmiK3kPtlDu-/view" target="_blank" rel="noopener noreferrer" style="color:#4ade80; text-decoration: underline;">Usra Contract</a> <span class="required">*</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="depositAcknowledge" name="depositAcknowledge" required>
+                        <label for="depositAcknowledge" class="checkbox-label">
+                            I acknowledge the $10 refunded deposit as a commitment device <span class="required">*</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="submit-button" id="submitBtn">
+                    START
+                </button>
+
+                <!-- Messages -->
+                <div class="success-message" id="successMessage">
+                    Application submitted successfully!<br>
+                    We'll be in touch soon.
+                </div>
+
+                <div class="error-message" id="errorMessage"></div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm'
+
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+        // Form elements
+        const form = document.getElementById('applicationForm')
+        const submitBtn = document.getElementById('submitBtn')
+        const successMessage = document.getElementById('successMessage')
+        const errorMessage = document.getElementById('errorMessage')
+        const progressBar = document.getElementById('progressBar')
+        const scheduleUpload = document.getElementById('scheduleUpload')
+        const uploadLabel = document.querySelector('label.upload-label')
+
+        // Conditional field logic
+        const attendingProgramsRadios = document.querySelectorAll('input[name="attendingPrograms"]')
+        const programDetails = document.getElementById('programDetails')
+
+        attendingProgramsRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'yes') {
+                    programDetails.style.display = 'block'
+                    document.getElementById('programDetailsText').required = true
+                } else {
+                    programDetails.style.display = 'none'
+                    document.getElementById('programDetailsText').required = false
+                }
+                updateProgress()
+            })
+        })
+
+        const volunteeringRadios = document.querySelectorAll('input[name="volunteeringInvolved"]')
+        const volunteerDetails = document.getElementById('volunteerDetails')
+
+        volunteeringRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'yes') {
+                    volunteerDetails.style.display = 'block'
+                    document.getElementById('volunteerDetailsText').required = true
+                } else {
+                    volunteerDetails.style.display = 'none'
+                    document.getElementById('volunteerDetailsText').required = false
+                }
+                updateProgress()
+            })
+        })
+
+        // Progress bar calculation
+        function updateProgress() {
+            const formData = new FormData(form)
+            const totalFields = form.querySelectorAll('input[required], textarea[required], select[required]').length
+            let filledFields = 0
+
+            form.querySelectorAll('input[required], textarea[required], select[required]').forEach(field => {
+                if (field.type === 'radio') {
+                    if (formData.get(field.name)) {
+                        filledFields++
+                        // Count radio group only once
+                        const radios = form.querySelectorAll(`input[name="${field.name}"]`)
+                        radios.forEach(r => {
+                            if (r !== field) r.removeAttribute('data-counted')
+                        })
+                    }
+                } else if (field.type === 'checkbox') {
+                    if (field.checked) filledFields++
+                } else {
+                    if (field.value.trim()) filledFields++
+                }
+            })
+
+            // Adjust for radio groups (counted multiple times)
+            const radioGroups = new Set()
+            form.querySelectorAll('input[type="radio"][required]').forEach(radio => {
+                radioGroups.add(radio.name)
+            })
+            
+            // Better progress calculation
+            const inputs = Array.from(form.querySelectorAll('input, textarea, select'))
+            const requiredInputs = inputs.filter(input => {
+                if (input.type === 'radio' || input.type === 'checkbox') {
+                    return input.hasAttribute('required')
+                }
+                return input.hasAttribute('required')
+            })
+
+            // Count unique radio groups
+            const radioGroupNames = new Set()
+            const nonRadioRequired = []
+            
+            requiredInputs.forEach(input => {
+                if (input.type === 'radio') {
+                    radioGroupNames.add(input.name)
+                } else {
+                    nonRadioRequired.push(input)
+                }
+            })
+
+            const totalRequired = radioGroupNames.size + nonRadioRequired.length
+            let completed = 0
+
+            // Check radio groups
+            radioGroupNames.forEach(name => {
+                if (formData.get(name)) completed++
+            })
+
+            // Check other fields
+            nonRadioRequired.forEach(input => {
+                if (input.type === 'checkbox' && input.checked) {
+                    completed++
+                } else if (input.value && input.value.trim()) {
+                    completed++
+                }
+            })
+
+            const progress = totalRequired > 0 ? (completed / totalRequired) * 100 : 0
+            progressBar.style.width = progress + '%'
+        }
+
+        // Update progress on any input change
+        form.addEventListener('input', updateProgress)
+        form.addEventListener('change', updateProgress)
+
+        // File upload label feedback
+        if (scheduleUpload && uploadLabel) {
+            scheduleUpload.addEventListener('change', () => {
+                const file = scheduleUpload.files && scheduleUpload.files[0]
+                uploadLabel.querySelector('span').textContent = file ? file.name : 'Upload schedule (optional)'
+            })
+        }
+
+        // Form submission -> insert into people table
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            
+            // Disable button and show loading
+            submitBtn.disabled = true
+            submitBtn.innerHTML = 'SUBMITTING<span class="loading"></span>'
+            successMessage.style.display = 'none'
+            errorMessage.style.display = 'none'
+
+            // Collect form data
+            const formData = new FormData(form)
+            
+            // Combine all long-answer questions into one text field with double line breaks
+            const longAnswers = []
+            
+            // Why usra
+            const whyUsra = formData.get('whyUsra')
+            if (whyUsra) longAnswers.push(`What makes you interested in joining usra?\n${whyUsra}`)
+            
+            // Program attendance
+            if (formData.get('attendingPrograms') === 'yes') {
+                const programDetails = formData.get('programDetailsText')
+                if (programDetails) longAnswers.push(`Current programs/halaqas?\n${programDetails}`)
+            }
+            
+            // Volunteering
+            if (formData.get('volunteeringInvolved') === 'yes') {
+                const volunteerDetails = formData.get('volunteerDetailsText')
+                if (volunteerDetails) longAnswers.push(`Volunteering/community service?\n${volunteerDetails}`)
+            }
+            
+            // Mentors
+            const mentors = formData.get('mentors')
+            if (mentors) longAnswers.push(`Mentors or references?\n${mentors}`)
+            
+            // Combine with double line breaks
+            const combinedNotes = longAnswers.join('\n\n')
+            
+            // Handle file upload if present
+            let scheduleFileUrl = null
+            const scheduleFile = formData.get('scheduleUpload')
+            if (scheduleFile && scheduleFile.size > 0) {
+                // For now, just note that a file was uploaded (file handling would need storage setup)
+                scheduleFileUrl = `File uploaded: ${scheduleFile.name}`
+            }
+            
+            const personData = {
+                person_id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+                name: formData.get('name'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                birthday: formData.get('birthday'),
+                age: parseInt(formData.get('age')),
+                usrah_id: null,
+                application_notes: combinedNotes,
+                local_masjid: formData.get('localMasjid'),
+                class_schedule: formData.get('classSchedule') || scheduleFileUrl || null,
+                usra_location_preference: formData.get('usraLocation'),
+                specific_preference: formData.get('specificPreference') || null,
+                application_status: 'Pending',
+                created_at: new Date().toISOString()
+            }
+
+            try {
+                // Insert into Supabase
+                const { data, error } = await supabase
+                    .from('people')
+                    .insert([personData])
+                    .select()
+
+                if (error) throw error
+
+                // Success
+                successMessage.style.display = 'block'
+                form.reset()
+                progressBar.style.width = '0%'
+                
+                // Scroll to success message
+                successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+                // Reset button after delay
+                setTimeout(() => {
+                    submitBtn.disabled = false
+                    submitBtn.innerHTML = 'START'
+                }, 3000)
+
+            } catch (error) {
+                console.error('Error submitting application:', error)
+                errorMessage.textContent = 'Error submitting application. Please try again or contact support.'
+                errorMessage.style.display = 'block'
+                
+                submitBtn.disabled = false
+                submitBtn.innerHTML = 'START'
+
+                // Scroll to error
+                errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+        })
+
+        // Initial progress
+        updateProgress()
+    </script>
+</body>
+</html>

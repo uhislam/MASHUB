@@ -2,13 +2,19 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm'
 
 // Initialize Supabase client
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co'
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+        const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // Supabase Data Access Functions
 export const supabaseAPI = {
+  // Create a person (application stored on people)
+  async createPerson(person) {
+    const { data, error } = await supabase.from('people').insert([person]).select()
+    if (error) throw error
+    return data[0]
+  },
   // Usrah operations
   async loadUsrah() {
     const { data, error } = await supabase.from('usrah').select('*')
@@ -41,19 +47,6 @@ export const supabaseAPI = {
     return data[0]
   },
 
-  // Weeks operations
-  async loadWeeks() {
-    const { data, error } = await supabase.from('weeks').select('*').order('week_id', { ascending: true })
-    if (error) throw error
-    return data
-  },
-
-  async createWeek(week) {
-    const { data, error } = await supabase.from('weeks').insert([week]).select()
-    if (error) throw error
-    return data[0]
-  },
-
   // Attendance operations
   async loadAttendance() {
     const { data, error } = await supabase.from('attendance').select('*')
@@ -77,5 +70,42 @@ export const supabaseAPI = {
     const { data, error } = await supabase.from('attendance').update(updates).eq('id', id).select()
     if (error) throw error
     return data[0]
+  },
+
+  // Journal operations
+  async loadJournals() {
+    const { data, error } = await supabase.from('journals').select('*').order('created_at', { ascending: false })
+    if (error) throw error
+    return data
+  },
+
+  async getJournalsByPerson(personId) {
+    const { data, error } = await supabase.from('journals').select('*').eq('person_id', personId).order('created_at', { ascending: false })
+    if (error) throw error
+    return data
+  },
+
+  async getJournalsByType(journalType) {
+    const { data, error } = await supabase.from('journals').select('*').eq('journal_type', journalType).order('created_at', { ascending: false })
+    if (error) throw error
+    return data
+  },
+
+  async createJournal(journal) {
+    const { data, error } = await supabase.from('journals').insert([journal]).select()
+    if (error) throw error
+    return data[0]
+  },
+
+  async updateJournal(id, updates) {
+    const { data, error } = await supabase.from('journals').update(updates).eq('id', id).select()
+    if (error) throw error
+    return data[0]
+  },
+
+  async deleteJournal(id) {
+    const { data, error } = await supabase.from('journals').delete().eq('id', id)
+    if (error) throw error
+    return data
   }
 }

@@ -21,6 +21,7 @@ CREATE TABLE usrah (
   usrah_id TEXT PRIMARY KEY,
   usrah_name TEXT NOT NULL,
   region TEXT,
+  naqeeb TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 ```
@@ -30,7 +31,8 @@ CREATE TABLE usrah (
 CREATE TABLE people (
   person_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  usrah_id TEXT NOT NULL REFERENCES usrah(usrah_id),
+  -- Allow null until a person is assigned to an usrah
+  usrah_id TEXT REFERENCES usrah(usrah_id),
   active BOOLEAN DEFAULT TRUE,
   is_member BOOLEAN DEFAULT FALSE,
   development_plan BOOLEAN DEFAULT FALSE,
@@ -46,16 +48,10 @@ CREATE TABLE people (
 );
 
 CREATE INDEX idx_people_usrah ON people(usrah_id);
-```
 
-### Create Weeks Table
-```sql
-CREATE TABLE weeks (
-  week_id TEXT PRIMARY KEY,
-  start_date TEXT NOT NULL,
-  end_date TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
-);
+-- Add naqeeb foreign key after people exists
+ALTER TABLE usrah
+  ADD CONSTRAINT fk_usrah_naqeeb FOREIGN KEY (naqeeb) REFERENCES people(person_id);
 ```
 
 ### Create Attendance Table
@@ -63,10 +59,10 @@ CREATE TABLE weeks (
 CREATE TABLE attendance (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   person_id TEXT NOT NULL REFERENCES people(person_id),
-  week_id TEXT NOT NULL REFERENCES weeks(week_id),
+  attendance_date DATE NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('present', 'absent', 'excused')),
   reported_by TEXT NOT NULL REFERENCES usrah(usrah_id),
-  reported_at TEXT,
+  reported_at TIMESTAMP DEFAULT NOW(),
   brotherhood INTEGER DEFAULT 0,
   pdpCompliance INTEGER DEFAULT 0,
   quran INTEGER DEFAULT 0,
@@ -78,12 +74,28 @@ CREATE TABLE attendance (
   overall_curriculum INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(person_id, week_id, reported_by)
+  UNIQUE(person_id, attendance_date, reported_by)
 );
 
 CREATE INDEX idx_attendance_person ON attendance(person_id);
-CREATE INDEX idx_attendance_week ON attendance(week_id);
+CREATE INDEX idx_attendance_date ON attendance(attendance_date);
 CREATE INDEX idx_attendance_reported_by ON attendance(reported_by);
+```
+
+### Create Journals Table
+```sql
+CREATE TABLE journals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  person_id TEXT NOT NULL REFERENCES people(person_id),
+  content TEXT NOT NULL,
+  journal_type TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_journals_person ON journals(person_id);
+CREATE INDEX idx_journals_type ON journals(journal_type);
+CREATE INDEX idx_journals_created ON journals(created_at);
 ```
 
 ## Step 3: Enable RLS (Row Level Security) - Optional but Recommended
@@ -95,19 +107,52 @@ For now, you can disable RLS during development:
 ```sql
 ALTER TABLE usrah DISABLE ROW LEVEL SECURITY;
 ALTER TABLE people DISABLE ROW LEVEL SECURITY;
-ALTER TABLE weeks DISABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
+ALTER TABLE journals DISABLE ROW LEVEL SECURITY;
 ```
+
+## Step 4: Store Application Fields on `people`
+
+Instead of a separate `applications` table, store application fields directly on `people`.
+
+Run these migrations if your `people` table already exists:
+
+```sql
+-- Make `usrah_id` nullable (if previously NOT NULL)
+ALTER TABLE people ALTER COLUMN usrah_id DROP NOT NULL;
+
+-- Add application-related fields
+ALTER TABLE people ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS birthday TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS age INTEGER;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS application_notes TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS local_masjid TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS class_schedule TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS usra_location_preference TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS specific_preference TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS application_status TEXT DEFAULT 'Pending';
+```
+
+**Field Descriptions:**
+- `application_notes` - Combined long-form answers (motivation, program details, volunteering, mentors) separated by double line breaks
+- `local_masjid` - Name of their local masjid
+- `class_schedule` - Their class schedule (typed or file reference)
+- `usra_location_preference` - Either "on-campus" or "off-campus"
+- `specific_preference` - Optional specific person/usra preference
+- `application_status` - Status: "Pending", "Accepted", "Assigned", etc.
+
+Admins can transition a person from `Pending` to `Accepted/Assigned` by setting `usrah_id` and updating `application_status`.
 
 ## Step 4: Seed Initial Data
 
 In **SQL Editor**, insert sample data:
 
 ```sql
-INSERT INTO usrah (usrah_id, usrah_name, region) VALUES
-  ('u1', 'North River', 'Southeast'),
-  ('u2', 'East Grove', 'Southeast'),
-  ('u3', 'Westfield', 'West');
+INSERT INTO usrah (usrah_id, usrah_name, region, naqeeb) VALUES
+  ('u1', 'North River', 'Southeast', 'p1'),
+  ('u2', 'East Grove', 'Southeast', 'p4'),
+  ('u3', 'Westfield', 'West', 'p7');
 
 INSERT INTO people (person_id, name, usrah_id, active, join_date) VALUES
   ('p1', 'Aisha Rahman', 'u1', true, '2024-09-15'),
@@ -118,16 +163,6 @@ INSERT INTO people (person_id, name, usrah_id, active, join_date) VALUES
   ('p7', 'Omar Saleh', 'u3', true, '2024-08-15'),
   ('p8', 'Sarah Idris', 'u3', true, '2024-07-20'),
   ('p9', 'Bilal Karim', 'u3', true, '2024-06-30');
-
-INSERT INTO weeks (week_id, start_date, end_date) VALUES
-  ('2025-W09', '2025-03-03', '2025-03-09'),
-  ('2025-W10', '2025-03-10', '2025-03-16'),
-  ('2025-W11', '2025-03-17', '2025-03-23'),
-  ('2025-W12', '2025-03-24', '2025-03-30'),
-  ('2025-W13', '2025-03-31', '2025-04-06'),
-  ('2025-W14', '2025-04-07', '2025-04-13'),
-  ('2025-W15', '2025-04-14', '2025-04-20'),
-  ('2025-W16', '2025-04-21', '2025-04-27');
 ```
 
 ## Step 5: Get API Keys
@@ -195,20 +230,23 @@ console.log(data) // Should show your usrah
 - `join_date` - When they joined
 - Ratings fields (brotherhood, quran, activism, etc.)
 
-### weeks
-- `week_id` - Primary key (e.g., "2025-W09")
-- `start_date` - Week start
-- `end_date` - Week end
-
 ### attendance
 - `id` - UUID primary key
 - `person_id` - Who attended
-- `week_id` - Which week
+- `attendance_date` - Date of attendance (DATE type)
 - `status` - 'present', 'absent', or 'excused'
 - `reported_by` - Which usrah reported
 - All metric fields (brotherhood, quran, activism, etc.)
 - `overall_brotherhood` - Usrah-level metric
 - `overall_curriculum` - Usrah-level metric
+
+### journals
+- `id` - UUID primary key
+- `person_id` - Foreign key to people (who wrote the journal)
+- `content` - Markdown text content
+- `journal_type` - Tag indicating type of journal (e.g., 'reflection', 'goal', 'tarbiyah', 'personal')
+- `created_at` - Timestamp when journal was created
+- `updated_at` - Timestamp when journal was last modified
 
 ## Features
 

@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDP</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050b16;
+      --surface: #0f172a;
+      --panel: #111c32;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #22d3ee;
+      --accent-2: #22c55e;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'DM Mono', 'Inter', monospace;
+      font-size: 1.2em;
+      background: radial-gradient(1400px 900px at 50% -260px, #0f172a 0%, #0b1120 60%, #040915 100%);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 10px 20px;
+    }
+    .frame { width: min(960px, 100%); padding: 0 8px; height: 100%; display: flex; flex-direction: column; justify-content: center; }
+    h1 { margin: 0 0 12px; font-size: clamp(24px, 4vw, 32px); letter-spacing: -0.01em; text-align: center; }
+    .panel {
+      /* background: radial-gradient(600px 600px at 20% 10%, rgba(34,211,238,0.05), transparent 45%),
+                  radial-gradient(500px 500px at 80% 20%, rgba(34,197,94,0.06), transparent 40%),
+                  var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0;
+      box-shadow: 0 30px 90px rgba(0,0,0,0.55); */
+    }
+    .panel.terminal { overflow: hidden; }
+    .terminal-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: linear-gradient(90deg, rgba(15,23,42,0.85), rgba(12,18,32,0.9));
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .dots { display: flex; gap: 6px; }
+    .dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      background: rgba(255,255,255,0.14);
+      box-shadow: 0 0 12px rgba(255,255,255,0.15);
+    }
+    .dots span:nth-child(1) { background: #f87171; }
+    .dots span:nth-child(2) { background: #fbbf24; }
+    .dots span:nth-child(3) { background: #34d399; }
+    .terminal-title { flex: 1; color: var(--text); font-weight: 700; letter-spacing: 0.6px; }
+    .terminal-meta { color: var(--accent); font-weight: 600; }
+    #flow-panel { display: flex; flex-direction: column; padding: 14px 14px 24px; height: calc(100% - 48px); overflow: hidden; }
+    #prompt-history { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; padding-right: 4px; overflow-y: auto; }
+    .prompt {
+      padding: 14px 14px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(12,20,38,0.9);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .prompt.active { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 2px rgba(34,211,238,0.5), 0 16px 48px rgba(34,211,238,0.32); }
+    .prompt .title { font-weight: 700; margin-bottom: 6px; letter-spacing: 0.2px; }
+    .prompt .body { color: var(--text); line-height: 1.6; min-height: 40px; }
+    .prompt.past { opacity: 0.35; color: var(--muted); pointer-events: none; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input, textarea, button { font-family: 'Inter', sans-serif; }
+    input, textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0c1426;
+      color: var(--text);
+      font-size: 17px;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-weight: 700;
+      font-size: 17px;
+      background: var(--accent);
+      color: #0f172a;
+      transition: filter 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    }
+    button.secondary { background: var(--accent-2); }
+    button:hover:not(:disabled) { filter: brightness(1.05); transform: translateY(-1px); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; transform: none; }
+    button.armed { box-shadow: 0 0 0 2px rgba(34,197,94,0.25), 0 12px 30px rgba(34,197,94,0.25); filter: brightness(1.03); }
+    .btn-row { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .stack { display: flex; flex-direction: column; gap: 12px; }
+    .muted { color: var(--muted); }
+    .status { margin-top: 8px; font-size: 13px; }
+    .hidden { display: none; }
+    .led-timer {
+      font-family: 'DM Mono', 'Fira Code', monospace;
+      font-size: 26px;
+      letter-spacing: 2px;
+      color: #22c55e;
+      background: #04110a;
+      border: 1px solid rgba(34,197,94,0.35);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: inline-block;
+      box-shadow: 0 0 18px rgba(34,197,94,0.2);
+      margin-top: 10px;
+    }
+    textarea { min-height: 160px; }
+    .shell-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 10px; opacity: 0.6; }
+    .ps1 { color: var(--accent-2); font-weight: 700; }
+    .cmd { color: var(--text); font-weight: 700; }
+    .output { background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.08); padding: 12px; border-radius: 10px; }
+    .terminal-hint { font-size: 12px; color: var(--muted); margin-top: 6px; letter-spacing: 0.2px; }
+    /* scrollbar theme */
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: rgba(10,16,28,0.7); }
+    *::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(34,211,238,0.55), rgba(34,197,94,0.6));
+      border-radius: 999px;
+      border: 2px solid rgba(10,16,28,0.9);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+    }
+    *::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(34,211,238,0.75), rgba(34,197,94,0.8)); }
+    @keyframes fadeUpSlide {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .prompt.active { animation: fadeUpSlide 0.5s ease-out; }
+    .prompt.active .output > * {
+      animation: fadeUpSlide 0.4s ease-out backwards;
+    }
+    .prompt.active .output > *:nth-child(1) { animation-delay: 0.1s; }
+    .prompt.active .output > *:nth-child(2) { animation-delay: 0.30s; }
+    .prompt.active .output > *:nth-child(3) { animation-delay: 0.5s; }
+    .prompt.active .output > *:nth-child(4) { animation-delay: 0.65s; }
+    .prompt.active .output > *:nth-child(5) { animation-delay: 0.9s; }
+    .prompt.active .output > *:nth-child(n+6) { animation-delay: 1.05s; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <!-- <h1>Personal Development Plan (PDP)</h1> -->
+    <div class="panel terminal" id="flow-panel">
+      <div class="terminal-top">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="terminal-title">PDP Shell · Assistant live</div>
+        <div class="terminal-meta">GPT-5.1-Codex-Max</div>
+      </div>
+      <div id="prompt-history"></div>
+      <div id="current-prompt-container"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './supabase-client.js'
+
+    const promptHistory = document.getElementById('prompt-history')
+    const currentPromptContainer = document.getElementById('current-prompt-container')
+    let person = null
+    let existingPdp = null
+    let currentItemIndex = 0
+    let countdownInterval = null
+    let typeInterval = null
+
+    const flowItems = [
+      {
+        type: 'lookup',
+        title: 'Personal Development Plan (PDP)',
+        fields: [
+          { id: 'email', label: 'Email', type: 'email', placeholder: 'you@example.com' },
+          { id: 'birthday', label: 'Birthday', type: 'date', placeholder: '' }
+        ]
+      },
+      {
+        type: 'prompt',
+        title: 'Pause and renew intention',
+        body: 'Take a few seconds to renew your intention before you write.',
+        countdown: 30,
+        showTimer: true
+      },
+      {
+        type: 'prompt',
+        title: 'Why a PDP is important',
+        body: 'Blurb here',
+        countdown: 0,
+        showTimer: false
+      },
+       {
+        type: 'prompt',
+        title: 'Why a PDP is important',
+        body: 'Blurb here',
+        countdown: 0,
+        showTimer: false
+      },
+      {
+        type: 'editor',
+        title: 'Your PDP'
+      }, {
+        type: 'prompt',
+        title: 'Why a PDP is important',
+        body: 'Blurb here',
+        countdown: 0,
+        showTimer: false
+      }
+    ]
+
+    function renderCurrentItem() {
+      if (currentItemIndex >= flowItems.length) return
+      const item = flowItems[currentItemIndex]
+      if (item.type === 'lookup') renderLookup(item)
+      if (item.type === 'prompt') renderPrompt(item)
+      if (item.type === 'editor') renderEditor(item)
+    }
+
+    function renderLookup(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const fields = item.fields.map(f => `
+        <div>
+          <label for="${f.id}">${f.label}</label>
+          <input type="${f.type}" id="${f.id}" placeholder="${f.placeholder}">
+        </div>
+      `).join('')
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">${item.title}</div>
+          <div class="stack" style="margin-top:12px;">
+            ${fields}
+            <div class="flex" style="gap:10px; align-items:center;">
+              <button id="flow-btn" class="secondary">Start</button>
+              <div class="status muted" id="flow-status"></div>
+            </div>
+          </div>
+          <div class="terminal-hint">Type your credentials to start the session. © 2025 Muslim American Society Houston.</div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      document.getElementById('flow-btn').onclick = handleLookup
+      scrollActiveIntoView(wrap)
+    }
+
+    async function handleLookup() {
+      const email = document.getElementById('email')?.value.trim().toLowerCase()
+      const birthday = document.getElementById('birthday')?.value
+      const flowStatus = document.getElementById('flow-status')
+      if (!email || !birthday) {
+        flowStatus.textContent = 'Email and birthday are required.'
+        return
+      }
+      flowStatus.textContent = 'Looking you up...'
+      try {
+        const { data, error } = await supabase
+          .from('people')
+          .select('*')
+          .eq('email', email)
+          .eq('birthday', birthday)
+          .limit(1)
+          .single()
+        if (error) throw error
+        person = data
+        flowStatus.textContent = 'Found. Loading...'
+        await loadExistingPdp()
+        archiveCurrentItem()
+        currentItemIndex += 1
+        renderCurrentItem()
+      } catch (err) {
+        if (err?.code === 'PGRST116') flowStatus.textContent = 'No record found for that email + birthday.'
+        else flowStatus.textContent = 'Error: ' + (err.message || 'Lookup failed')
+      }
+    }
+
+    async function loadExistingPdp() {
+      const { data, error } = await supabase
+        .from('journals')
+        .select('*')
+        .eq('person_id', person.person_id)
+        .eq('journal_type', 'PDP')
+        .limit(1)
+        .single()
+      if (!error) existingPdp = data
+      else if (error?.code === 'PGRST116') existingPdp = null
+      else throw error
+    }
+
+    function renderPrompt(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const needsTimer = item.showTimer && item.countdown > 0
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="body typed" id="prompt-body"></div>
+          ${needsTimer ? '<div id="prompt-timer" class="led-timer hidden">00:30</div>' : ''}
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary" disabled>Continue</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.addEventListener('click', () => handlePromptContinue())
+      scrollActiveIntoView(wrap)
+
+      typeOut(item.body, document.getElementById('prompt-body'))
+      const timer = document.getElementById('prompt-timer')
+      const shouldGate = needsTimer
+      if (shouldGate && timer) {
+        timer.classList.remove('hidden')
+        startCountdown(item.countdown)
+      }
+
+      if (shouldGate) {
+        flowBtn.disabled = true
+        setTimeout(() => {
+          flowBtn.disabled = false
+          flowBtn.classList.add('armed')
+        }, 5000)
+      } else {
+        flowBtn.disabled = false
+        flowBtn.classList.add('armed')
+      }
+    }
+
+    function handlePromptContinue() {
+      archiveCurrentItem()
+      clearInterval(countdownInterval)
+      clearInterval(typeInterval)
+      currentItemIndex += 1
+      renderCurrentItem()
+    }
+
+    function archiveCurrentItem() {
+      const item = document.getElementById('current-item')
+      if (!item) return
+      const clone = item.cloneNode(true)
+      clone.classList.add('past')
+      clone.classList.remove('active')
+      clone.id = ''
+      // strip duplicate ids so future getElementById grabs the live prompt, not history
+      clone.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'))
+      clone.querySelectorAll('button').forEach(btn => btn.disabled = true)
+      promptHistory.appendChild(clone)
+      promptHistory.scrollTop = promptHistory.scrollHeight
+    }
+
+    function typeOut(text, el) {
+      clearInterval(typeInterval)
+      let idx = 0
+      el.textContent = ''
+      typeInterval = setInterval(() => {
+        el.textContent = text.slice(0, idx + 1)
+        idx += 1
+        if (idx >= text.length) clearInterval(typeInterval)
+      }, 45)
+    }
+
+    function startCountdown(seconds) {
+      clearInterval(countdownInterval)
+      let remaining = seconds
+      const timer = document.getElementById('prompt-timer')
+      timer.textContent = formatTime(remaining)
+      countdownInterval = setInterval(() => {
+        remaining -= 1
+        timer.textContent = formatTime(remaining)
+        if (remaining <= 0) clearInterval(countdownInterval)
+      }, 1000)
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0')
+      const s = (sec % 60).toString().padStart(2, '0')
+      return `${m}:${s}`
+    }
+
+    function scrollActiveIntoView(el) {
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+
+    function renderEditor(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">${item.title}</div>
+          <div class="muted" style="margin-bottom:8px;">${person?.name || 'Unknown'}${person?.email ? ' • ' + person.email : ''}</div>
+          <label for="pdp-content">Your PDP</label>
+          <textarea id="pdp-content" placeholder="Type your PDP here..."></textarea>
+          <div class="flex" style="align-items:center; gap:10px; margin-top:10px;">
+            <button id="save-btn">Save PDP</button>
+            <div class="status muted" id="save-status"></div>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const pdpContent = document.getElementById('pdp-content')
+      const saveBtn = document.getElementById('save-btn')
+      const saveStatus = document.getElementById('save-status')
+      pdpContent.value = existingPdp?.content || ''
+      saveBtn.addEventListener('click', () => handleSave(pdpContent, saveBtn, saveStatus))
+      scrollActiveIntoView(wrap)
+    }
+
+    async function handleSave(pdpContent, saveBtn, saveStatus) {
+      if (!person) return
+      const content = pdpContent.value.trim()
+      if (!content) {
+        saveStatus.textContent = 'Please add PDP content before saving.'
+        return
+      }
+      saveBtn.disabled = true
+      saveStatus.textContent = 'Saving...'
+      try {
+        if (existingPdp) {
+          const { error } = await supabase
+            .from('journals')
+            .update({ content, updated_at: new Date().toISOString() })
+            .eq('id', existingPdp.id)
+          if (error) throw error
+          existingPdp.content = content
+          saveStatus.textContent = 'PDP updated.'
+        } else {
+          const { error } = await supabase
+            .from('journals')
+            .insert([{ person_id: person.person_id, content, journal_type: 'PDP' }])
+          if (error) throw error
+          existingPdp = { person_id: person.person_id, content, journal_type: 'PDP' }
+          saveStatus.textContent = 'PDP created.'
+        }
+      } catch (err) {
+        saveStatus.textContent = 'Error: ' + (err.message || 'Save failed')
+      } finally {
+        saveBtn.disabled = false
+      }
+    }
+
+    renderCurrentItem()
+  </script>
+</body>
+</html>

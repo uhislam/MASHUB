@@ -920,30 +920,14 @@
       `;
     }
     
-    // ============================================
-    // GOOGLE SHEETS CONFIGURATION
-    // ============================================
-    // Replace these with your actual values:
-    const CONFIG = {
-      SPREADSHEET_ID: '1SImm1Bn9vaw1gtuVPp9XG9WNCN4pLVVSwHYsPZF8sRs',  // From the URL of your Google Sheet
-      API_KEY: 'AIzaSyAxI7WtFFF9JTEOO6UyhlnZxdBx9Nd_nXs',  // From Google Cloud Console
-      SHEET_NAMES: {
-        settings: 'Settings',
-        usrah: 'Usrah',
-        people: 'People',
-        weeks: 'Weeks',
-        attendance: 'Attendance'
-      },
-      USE_GOOGLE_SHEETS: false  // Set to true when ready to use Google Sheets
-    };
-
-    // Sample data standing in for Google Sheets responses.
+    // ============ DATA INITIALIZATION ============
+    // Sample data (fallback when Supabase unavailable).
     const DATA = {
       settings: { windowMonths: 2 },
       usrah: [
-        { usrah_id: "u1", usrah_name: "North River", submission_code: "NR-8432", region: "Southeast" },
-        { usrah_id: "u2", usrah_name: "East Grove", submission_code: "EG-1923", region: "Southeast" },
-        { usrah_id: "u3", usrah_name: "Westfield", submission_code: "WF-5520", region: "West" }
+        { usrah_id: "u1", usrah_name: "North River", region: "Southeast", naqeeb: "p1" },
+        { usrah_id: "u2", usrah_name: "East Grove", region: "Southeast", naqeeb: "p4" },
+        { usrah_id: "u3", usrah_name: "Westfield", region: "West", naqeeb: "p7" }
       ],
       people: [
         { person_id: "p1", name: "Aisha Rahman", usrah_id: "u1", active: true, is_member: true, development_plan: true, leadership: true, join_date: "2024-01-15", brotherhood_rating: 4, quran_progress: 3, activism_rating: 5, chapter_involvement: 4 },
@@ -1000,7 +984,6 @@
     // Derived maps for quick lookups.
     let PEOPLE_BY_ID = new Map(DATA.people.map(p => [p.person_id, p]));
     let USRAH_BY_ID = new Map(DATA.usrah.map(u => [u.usrah_id, u]));
-    let CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code?.toLowerCase?.() || '', u]));
 
     // ============ SUPABASE INTEGRATION ============
     async function loadDataFromSupabase() {
@@ -1009,28 +992,24 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
         const supabase = window.supabaseCreateClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        const [usrahRes, peopleRes, weeksRes, attendanceRes] = await Promise.all([
+        const [usrahRes, peopleRes, attendanceRes] = await Promise.all([
           supabase.from('usrah').select('*'),
           supabase.from('people').select('*'),
-          supabase.from('weeks').select('*').order('week_id'),
           supabase.from('attendance').select('*')
         ]);
         
         if (usrahRes.error) throw usrahRes.error;
         if (peopleRes.error) throw peopleRes.error;
-        if (weeksRes.error) throw weeksRes.error;
         if (attendanceRes.error) throw attendanceRes.error;
         
         // Update DATA with Supabase results
         DATA.usrah = usrahRes.data;
         DATA.people = peopleRes.data;
-        DATA.weeks = weeksRes.data;
         DATA.attendance = attendanceRes.data;
         
         // Reinitialize lookup maps
         PEOPLE_BY_ID = new Map(DATA.people.map(p => [p.person_id, p]));
         USRAH_BY_ID = new Map(DATA.usrah.map(u => [u.usrah_id, u]));
-        CODE_TO_USRAH = new Map(DATA.usrah.map(u => [u.submission_code?.toLowerCase?.() || '', u]));
         
         console.log('✓ Data loaded from Supabase');
         return true;
