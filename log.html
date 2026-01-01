@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+	<title>Log Activity</title>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="styles.css">
+	<style>
+		/* Dark night texture overlay */
+		body {
+			background-image: url('Assets/darknight.jpg');
+			background-size: 100vw;
+			background-repeat: repeat;
+			background-blend-mode: overlay;
+		}
+	</style>
+	<script type="module">
+		import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+		window.supabaseCreateClient = createClient;
+	</script>
+</head>
+<body>
+	<div class="container">
+		<header>
+			<h1>Log Activity</h1>
+		</header>
+
+		<div class="card">
+			<form id="activityForm">
+				<div class="form-group">
+					<label for="emailInput">Your Email Address <span class="required">*</span></label>
+					<input type="email" id="emailInput" name="email" placeholder="email@example.com" required>
+				</div>
+
+				<div class="form-group">
+					<label for="activityType">Activity Type <span class="required">*</span></label>
+					<div class="activity-type-selector">
+						<input type="radio" id="khaterah" name="activityType" value="Khaterah" required>
+						<label for="khaterah" class="activity-label activity-khaterah">📖 Khaterah</label>
+						
+						<input type="radio" id="dawah" name="activityType" value="Dawah">
+						<label for="dawah" class="activity-label activity-dawah">🤝 Dawah</label>
+						
+						<input type="radio" id="service" name="activityType" value="Service">
+						<label for="service" class="activity-label activity-service">💚 Service</label>
+						
+						<input type="radio" id="iftaar" name="activityType" value="Iftaar">
+						<label for="iftaar" class="activity-label activity-iftaar">🍽️ Iftaar</label>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label for="activityDate">Date of Activity <span class="required">*</span></label>
+					<input type="date" id="activityDate" name="activityDate" required>
+				</div>
+
+				<div class="form-group">
+					<label for="notes">What did you do? <span class="required">*</span></label>
+					<textarea id="notes" name="notes" rows="4" placeholder="Describe your activity..." required></textarea>
+				</div>
+
+				<div class="form-group">
+					<label for="witness">Witness (Name) <span class="required">*</span></label>
+					<input type="text" id="witness" name="witness" placeholder="Who can verify this activity?" required>
+				</div>
+
+				<button type="submit" class="submit-button" id="submitBtn">Submit Activity</button>
+
+				<div class="success-message" id="successMessage" style="display: none;">
+					Activity logged successfully!
+				</div>
+				<div class="error-message" id="errorMessage" style="display: none;"></div>
+			</form>
+		</div>
+	</div>
+
+
+
+	<style>
+		/* Match application.html styling */
+		body {
+			padding: 0;
+			font-size: 17px;
+		}
+
+		.container {
+			max-width: 700px;
+			margin: 0 auto;
+			padding: 0 20px 60px;
+		}
+
+		header {
+			text-align: center;
+			padding: 60px 20px 40px;
+			margin-top: 20px;
+		}
+
+		h1 {
+			font-family: 'Press Start 2P', cursive;
+			font-size: clamp(20px, 5vw, 36px);
+			color: #ffffff;
+			text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+			margin-bottom: 20px;
+			line-height: 1.5;
+		}
+
+		.card {
+			background: rgba(30, 41, 59, 0.6);
+			backdrop-filter: blur(10px);
+			border: 2px solid rgba(148, 163, 184, 0.2);
+			border-radius: 12px;
+			padding: clamp(20px, 5vw, 40px);
+			box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+		}
+
+		.form-group {
+			margin-bottom: 24px;
+		}
+
+		label {
+			display: block;
+			margin-bottom: 8px;
+			color: #e2e8f0;
+			font-size: clamp(15px, 2.5vw, 17px);
+			font-weight: 500;
+		}
+
+		.required {
+			color: #ef4444;
+			margin-left: 4px;
+		}
+
+		input[type="email"],
+		input[type="text"],
+		input[type="date"],
+		textarea {
+			width: 100%;
+			padding: 12px 16px;
+			background: rgba(15, 23, 42, 0.6);
+			border: 2px solid rgba(148, 163, 184, 0.3);
+			border-radius: 8px;
+			color: #ffffff;
+			font-size: clamp(14px, 2.5vw, 16px);
+			font-family: 'Inter', sans-serif;
+			transition: all 0.3s ease;
+		}
+
+		textarea {
+			resize: vertical;
+			min-height: 100px;
+		}
+
+		input[type="email"]:focus,
+		input[type="text"]:focus,
+		input[type="date"]:focus,
+		textarea:focus {
+			outline: none;
+			border-color: #4ade80;
+			box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.1);
+		}
+
+		.activity-type-selector {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 12px;
+			margin-top: 12px;
+		}
+
+		.activity-type-selector input[type="radio"] {
+			display: none;
+		}
+
+		.activity-label {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 8px;
+			padding: 14px 18px;
+			background: rgba(15, 23, 42, 0.6);
+			border: 2px solid rgba(148, 163, 184, 0.3);
+			border-radius: 8px;
+			color: #e2e8f0;
+			cursor: pointer;
+			font-weight: 600;
+			font-size: 15px;
+			transition: all 0.3s ease;
+			flex: 1 1 auto;
+			min-width: fit-content;
+		}
+
+		/* Khaterah - Purple */
+		.activity-khaterah {
+			background: rgba(168, 85, 247, 0.08);
+			border-color: rgba(168, 85, 247, 0.3);
+		}
+		.activity-khaterah:hover {
+			background: rgba(168, 85, 247, 0.2);
+			border-color: rgba(168, 85, 247, 0.6);
+		}
+		.activity-type-selector input[type="radio"]:checked + .activity-khaterah {
+			background: rgba(168, 85, 247, 0.4);
+			border-color: #a855f7;
+			border-width: 3px;
+			box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+			transform: scale(1.02);
+		}
+
+		/* Dawah - Blue */
+		.activity-dawah {
+			background: rgba(59, 130, 246, 0.08);
+			border-color: rgba(59, 130, 246, 0.3);
+		}
+		.activity-dawah:hover {
+			background: rgba(59, 130, 246, 0.2);
+			border-color: rgba(59, 130, 246, 0.6);
+		}
+		.activity-type-selector input[type="radio"]:checked + .activity-dawah {
+			background: rgba(59, 130, 246, 0.4);
+			border-color: #3b82f6;
+			border-width: 3px;
+			box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+			transform: scale(1.02);
+		}
+
+		/* Service - Green */
+		.activity-service {
+			background: rgba(34, 197, 94, 0.08);
+			border-color: rgba(34, 197, 94, 0.3);
+		}
+		.activity-service:hover {
+			background: rgba(34, 197, 94, 0.2);
+			border-color: rgba(34, 197, 94, 0.6);
+		}
+		.activity-type-selector input[type="radio"]:checked + .activity-service {
+			background: rgba(34, 197, 94, 0.4);
+			border-color: #22c55e;
+			border-width: 3px;
+			box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+			transform: scale(1.02);
+		}
+
+		/* Iftaar - Cyan */
+		.activity-iftaar {
+			background: rgba(6, 182, 212, 0.08);
+			border-color: rgba(6, 182, 212, 0.3);
+		}
+		.activity-iftaar:hover {
+			background: rgba(6, 182, 212, 0.2);
+			border-color: rgba(6, 182, 212, 0.6);
+		}
+		.activity-type-selector input[type="radio"]:checked + .activity-iftaar {
+			background: rgba(6, 182, 212, 0.4);
+			border-color: #06b6d4;
+			border-width: 3px;
+			box-shadow: 0 0 20px rgba(6, 182, 212, 0.6);
+			transform: scale(1.02);
+		}
+
+		.success-message {
+			display: none;
+			background: rgba(74, 222, 128, 0.1);
+			border: 2px solid #4ade80;
+			border-radius: 8px;
+			padding: 20px;
+			margin-top: 20px;
+			text-align: center;
+			font-family: 'Press Start 2P', cursive;
+			font-size: clamp(10px, 2.5vw, 12px);
+			line-height: 1.8;
+			color: #4ade80;
+		}
+
+		.error-message {
+			display: none;
+			background: rgba(239, 68, 68, 0.1);
+			border: 2px solid #ef4444;
+			border-radius: 8px;
+			padding: 20px;
+			margin-top: 20px;
+			text-align: center;
+			font-size: clamp(12px, 2.5vw, 14px);
+			color: #ef4444;
+		}
+
+		/* Submit Button - Pixel Art Style */
+		.submit-button {
+			font-family: 'Press Start 2P', cursive;
+			font-size: clamp(14px, 3vw, 18px);
+			padding: 18px 40px;
+			background: #4ade80;
+			color: #0f172a;
+			border: 4px solid #22c55e;
+			border-radius: 0;
+			cursor: pointer;
+			text-transform: uppercase;
+			box-shadow: 
+				6px 6px 0px #22c55e,
+				6px 6px 0px 2px rgba(0, 0, 0, 0.3);
+			transition: all 0.1s ease;
+			width: 100%;
+			margin-top: 30px;
+			position: relative;
+		}
+
+		.submit-button:hover:not(:disabled) {
+			background: #22c55e;
+			transform: translate(2px, 2px);
+			box-shadow: 
+				4px 4px 0px #16a34a,
+				4px 4px 0px 2px rgba(0, 0, 0, 0.3);
+		}
+
+		.submit-button:active:not(:disabled) {
+			transform: translate(6px, 6px);
+			box-shadow: none;
+		}
+
+		.submit-button:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+
+		footer {
+			background: rgba(15, 23, 42, 0.8);
+			backdrop-filter: blur(10px);
+			padding: 30px 20px;
+			border-top: 2px solid rgba(148, 163, 184, 0.2);
+			margin-top: 60px;
+		}
+
+		.footer-content {
+			max-width: 700px;
+			margin: 0 auto;
+		}
+
+		.footer-links {
+			display: flex;
+			justify-content: center;
+			gap: 15px;
+			flex-wrap: wrap;
+		}
+
+		.pixel-button {
+			font-family: 'Press Start 2P', cursive;
+			font-size: clamp(10px, 2vw, 12px);
+			padding: 12px 20px;
+			background: rgba(148, 163, 184, 0.2);
+			color: #e2e8f0;
+			border: 2px solid rgba(148, 163, 184, 0.4);
+			text-decoration: none;
+			display: inline-block;
+			transition: all 0.3s ease;
+			box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.3);
+		}
+
+		.pixel-button:hover {
+			background: rgba(74, 222, 128, 0.3);
+			border-color: #4ade80;
+			color: #4ade80;
+			transform: translate(-2px, -2px);
+			box-shadow: 5px 5px 0px rgba(0, 0, 0, 0.4);
+		}
+
+		@media (max-width: 640px) {
+			header {
+				padding: 40px 15px 30px;
+			}
+			
+			.card {
+				padding: 20px;
+			}
+
+			.submit-button {
+				padding: 16px 30px;
+			}
+		}
+	</style>
+
+	<script type="module">
+		import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+		
+		const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+		const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
+		const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+		const form = document.getElementById('activityForm');
+		const successMessage = document.getElementById('successMessage');
+		const errorMessage = document.getElementById('errorMessage');
+		const submitBtn = document.getElementById('submitBtn');
+		const emailInput = document.getElementById('emailInput');
+		const emailGroup = emailInput.closest('.form-group');
+
+		let loggedInPerson = null;
+
+		// Session management functions
+		function loadSession() {
+			const session = localStorage.getItem('pdp_session');
+			if (!session) return null;
+			try {
+				const data = JSON.parse(session);
+				// Check if session is less than 7 days old
+				const sessionAge = (new Date() - new Date(data.timestamp)) / (1000 * 60 * 60 * 24);
+				if (sessionAge > 7) {
+					localStorage.removeItem('pdp_session');
+					return null;
+				}
+				return data.person;
+			} catch (err) {
+				return null;
+			}
+		}
+
+		function saveSession(personData) {
+			localStorage.setItem('pdp_session', JSON.stringify({
+				person: personData,
+				timestamp: new Date().toISOString()
+			}));
+		}
+
+		// Check for existing session on page load
+		loggedInPerson = loadSession();
+		if (loggedInPerson) {
+			// Hide email field and show who's logged in
+			emailGroup.style.display = 'none';
+			const firstName = loggedInPerson.name?.split(' ')[0] || 'User';
+			const greeting = document.createElement('p');
+			greeting.style.cssText = 'margin-bottom: 20px; color: #e2e8f0;';
+			greeting.textContent = `Hi ${firstName}!`;
+			emailGroup.parentElement.insertBefore(greeting, emailGroup);
+		}
+
+		form.addEventListener('submit', async (e) => {
+			e.preventDefault();
+
+			const activityType = document.querySelector('input[name="activityType"]:checked')?.value;
+			const activityDate = document.getElementById('activityDate').value;
+			const notes = document.getElementById('notes').value.trim();
+			const witness = document.getElementById('witness').value.trim();
+
+			if (!activityType || !activityDate || !notes || !witness) {
+				errorMessage.textContent = 'Please fill in all required fields.';
+				errorMessage.style.display = 'block';
+				successMessage.style.display = 'none';
+				return;
+			}
+
+			try {
+				submitBtn.disabled = true;
+				submitBtn.textContent = 'Submitting...';
+
+				let person = loggedInPerson;
+
+				// If not logged in, look up person by email
+				if (!person) {
+					const email = emailInput.value.trim();
+					if (!email) {
+						errorMessage.textContent = 'Please enter your email address.';
+						errorMessage.style.display = 'block';
+						successMessage.style.display = 'none';
+						submitBtn.disabled = false;
+						submitBtn.textContent = 'Submit Activity';
+						return;
+					}
+
+					const { data: people, error: personError } = await supabase
+						.from('people')
+						.select('person_id, name, email')
+						.eq('email', email)
+						.limit(1);
+
+					if (personError) throw personError;
+
+					if (!people || people.length === 0) {
+						errorMessage.textContent = 'Email not found. Please check your email address or contact an admin.';
+						errorMessage.style.display = 'block';
+						successMessage.style.display = 'none';
+						submitBtn.disabled = false;
+						submitBtn.textContent = 'Submit Activity';
+						return;
+					}
+
+					person = people[0];
+					// Save session for future use
+					saveSession(person);
+				}
+
+				// Append witness to notes
+				const fullNotes = `${notes}\n\nWitness: ${witness}`;
+
+				// Insert activity record
+				const { error: insertError } = await supabase.from('activities').insert([{
+					person_id: person.person_id,
+					activity_type: activityType,
+					activity_date: activityDate,
+					notes: fullNotes,
+					created_at: new Date().toISOString()
+				}]);
+
+				if (insertError) throw insertError;
+
+				successMessage.textContent = `Activity logged successfully for ${person.name}! Redirecting...`;
+				successMessage.style.display = 'block';
+				errorMessage.style.display = 'none';
+				form.reset();
+
+				setTimeout(() => {
+					window.location.href = 'index.html';
+				}, 1500);
+			} catch (err) {
+				console.error('Error submitting activity:', err);
+				errorMessage.textContent = `Error submitting activity: ${err.message}`;
+				errorMessage.style.display = 'block';
+				successMessage.style.display = 'none';
+			} finally {
+				submitBtn.disabled = false;
+				submitBtn.textContent = 'Submit Activity';
+			}
+		});
+
+		// Set max date to today
+		const today = new Date().toISOString().split('T')[0];
+		document.getElementById('activityDate').setAttribute('max', today);
+	</script>
+</body>
+</html>

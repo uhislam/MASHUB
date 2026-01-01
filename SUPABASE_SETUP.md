@@ -33,16 +33,11 @@ CREATE TABLE people (
   name TEXT NOT NULL,
   -- Allow null until a person is assigned to an usrah
   usrah_id TEXT REFERENCES usrah(usrah_id),
-  active BOOLEAN DEFAULT TRUE,
-  is_member BOOLEAN DEFAULT FALSE,
-  development_plan BOOLEAN DEFAULT FALSE,
-  leadership BOOLEAN DEFAULT FALSE,
-  join_date TEXT,
-  brotherhood_rating INTEGER DEFAULT 0,
-  quran_progress INTEGER DEFAULT 0,
+  tarbiya_rating INTEGER DEFAULT 0,      -- formerly quran_progress
   activism_rating INTEGER DEFAULT 0,
   leadership_rating INTEGER DEFAULT 0,
-  chapter_involvement INTEGER DEFAULT 0,
+  mas_rating INTEGER DEFAULT 0,          -- formerly chapter_involvement
+  commitment_rating INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -54,32 +49,36 @@ ALTER TABLE usrah
   ADD CONSTRAINT fk_usrah_naqeeb FOREIGN KEY (naqeeb) REFERENCES people(person_id);
 ```
 
-### Create Attendance Table
+### Create Attendance Table (one record per usrah meeting, multiple attendees)
 ```sql
 CREATE TABLE attendance (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  person_id TEXT NOT NULL REFERENCES people(person_id),
   attendance_date DATE NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('present', 'absent', 'excused')),
-  reported_by TEXT NOT NULL REFERENCES usrah(usrah_id),
+  usrah_id TEXT NOT NULL REFERENCES usrah(usrah_id),
+  attendee_ids TEXT[] NOT NULL, -- array of person_id values for those present
+  brotherhood_level INTEGER DEFAULT 0,
+  curriculum_progress INTEGER DEFAULT 0,
   reported_at TIMESTAMP DEFAULT NOW(),
-  brotherhood INTEGER DEFAULT 0,
-  pdpCompliance INTEGER DEFAULT 0,
-  quran INTEGER DEFAULT 0,
-  activism INTEGER DEFAULT 0,
-  leadership INTEGER DEFAULT 0,
-  chapter INTEGER DEFAULT 0,
-  membership INTEGER DEFAULT 0,
-  overall_brotherhood INTEGER DEFAULT 0,
-  overall_curriculum INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(person_id, attendance_date, reported_by)
+  UNIQUE(attendance_date, usrah_id)
 );
 
-CREATE INDEX idx_attendance_person ON attendance(person_id);
 CREATE INDEX idx_attendance_date ON attendance(attendance_date);
-CREATE INDEX idx_attendance_reported_by ON attendance(reported_by);
+CREATE INDEX idx_attendance_usrah ON attendance(usrah_id);
+```
+
+### Create Activities Table
+```sql
+CREATE TABLE activities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  person_id TEXT NOT NULL REFERENCES people(person_id),
+  activity_date DATE NOT NULL,
+  activity_type TEXT NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_activities_person ON activities(person_id);
+CREATE INDEX idx_activities_date ON activities(activity_date);
 ```
 
 ### Create Journals Table
@@ -131,7 +130,20 @@ ALTER TABLE people ADD COLUMN IF NOT EXISTS local_masjid TEXT;
 ALTER TABLE people ADD COLUMN IF NOT EXISTS class_schedule TEXT;
 ALTER TABLE people ADD COLUMN IF NOT EXISTS usra_location_preference TEXT;
 ALTER TABLE people ADD COLUMN IF NOT EXISTS specific_preference TEXT;
-ALTER TABLE people ADD COLUMN IF NOT EXISTS application_status TEXT DEFAULT 'Pending';
+
+-- Drop deprecated fields
+ALTER TABLE people DROP COLUMN IF EXISTS active;
+ALTER TABLE people DROP COLUMN IF EXISTS is_member;
+ALTER TABLE people DROP COLUMN IF EXISTS development_plan;
+ALTER TABLE people DROP COLUMN IF EXISTS leadership;
+ALTER TABLE people DROP COLUMN IF EXISTS join_date;
+ALTER TABLE people DROP COLUMN IF EXISTS brotherhood_rating;
+ALTER TABLE people DROP COLUMN IF EXISTS application_status;
+
+-- Rename and add ratings
+ALTER TABLE people RENAME COLUMN IF EXISTS quran_progress TO tarbiya_rating;
+ALTER TABLE people RENAME COLUMN IF EXISTS chapter_involvement TO mas_rating;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS commitment_rating INTEGER DEFAULT 0;
 ```
 
 **Field Descriptions:**
@@ -140,9 +152,6 @@ ALTER TABLE people ADD COLUMN IF NOT EXISTS application_status TEXT DEFAULT 'Pen
 - `class_schedule` - Their class schedule (typed or file reference)
 - `usra_location_preference` - Either "on-campus" or "off-campus"
 - `specific_preference` - Optional specific person/usra preference
-- `application_status` - Status: "Pending", "Accepted", "Assigned", etc.
-
-Admins can transition a person from `Pending` to `Accepted/Assigned` by setting `usrah_id` and updating `application_status`.
 
 ## Step 4: Seed Initial Data
 
@@ -154,15 +163,15 @@ INSERT INTO usrah (usrah_id, usrah_name, region, naqeeb) VALUES
   ('u2', 'East Grove', 'Southeast', 'p4'),
   ('u3', 'Westfield', 'West', 'p7');
 
-INSERT INTO people (person_id, name, usrah_id, active, join_date) VALUES
-  ('p1', 'Aisha Rahman', 'u1', true, '2024-09-15'),
-  ('p2', 'Fatimah Khan', 'u1', true, '2024-08-20'),
-  ('p3', 'Yusuf Malik', 'u1', true, '2024-07-10'),
-  ('p4', 'Ismail Odeh', 'u2', true, '2024-10-01'),
-  ('p5', 'Maryam Said', 'u2', true, '2024-09-05'),
-  ('p7', 'Omar Saleh', 'u3', true, '2024-08-15'),
-  ('p8', 'Sarah Idris', 'u3', true, '2024-07-20'),
-  ('p9', 'Bilal Karim', 'u3', true, '2024-06-30');
+INSERT INTO people (person_id, name, usrah_id, tarbiya_rating, activism_rating, leadership_rating, mas_rating, commitment_rating) VALUES
+  ('p1', 'Aisha Rahman', 'u1', 3, 4, 3, 4, 4),
+  ('p2', 'Fatimah Khan', 'u1', 2, 3, 2, 3, 3),
+  ('p3', 'Yusuf Malik', 'u1', 4, 4, 3, 5, 4),
+  ('p4', 'Ismail Odeh', 'u2', 5, 5, 4, 5, 5),
+  ('p5', 'Maryam Said', 'u2', 3, 2, 2, 3, 3),
+  ('p7', 'Omar Saleh', 'u3', 4, 3, 3, 4, 4),
+  ('p8', 'Sarah Idris', 'u3', 5, 4, 4, 5, 5),
+  ('p9', 'Bilal Karim', 'u3', 2, 3, 2, 3, 3);
 ```
 
 ## Step 5: Get API Keys
@@ -226,19 +235,16 @@ console.log(data) // Should show your usrah
 - `person_id` - Primary key
 - `name` - Full name
 - `usrah_id` - Foreign key to usrah
-- `active` - Currently active member
-- `join_date` - When they joined
-- Ratings fields (brotherhood, quran, activism, etc.)
+- Ratings fields: `tarbiya_rating`, `activism_rating`, `leadership_rating`, `mas_rating`, `commitment_rating`
 
 ### attendance
 - `id` - UUID primary key
-- `person_id` - Who attended
-- `attendance_date` - Date of attendance (DATE type)
-- `status` - 'present', 'absent', or 'excused'
-- `reported_by` - Which usrah reported
-- All metric fields (brotherhood, quran, activism, etc.)
-- `overall_brotherhood` - Usrah-level metric
-- `overall_curriculum` - Usrah-level metric
+- `attendance_date` - Date of the meeting (DATE type)
+- `usrah_id` - Which usrah met (FK to usrah)
+- `attendee_ids` - Array of person_id values present at that meeting
+- `brotherhood_level` - Brotherhood level for that meeting
+- `curriculum_progress` - Curriculum progress for that meeting
+- `reported_at` - When this meeting attendance was recorded
 
 ### journals
 - `id` - UUID primary key

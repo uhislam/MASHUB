@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+	<title>Usrah Attendance</title>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="styles.css">
+	<style>
+		/* Test: Dark night texture overlay */
+		body {
+			background-image: url('Assets/darknight.jpg');
+      background-size: 100vw;
+			background-repeat: repeat;
+			background-blend-mode: overlay;
+		}
+	</style>
+	<script type="module">
+		import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+		window.supabaseCreateClient = createClient;
+	</script>
+</head>
+<body>
+	<div class="container">
+		<header>
+			<h1>Usrah Attendance</h1>
+		</header>
+
+		<div class="card">
+			<form id="attendanceForm">
+				<div class="form-group">
+					<label for="usrahSelect">Select Usrah <span class="required">*</span></label>
+					<select id="usrahSelect" name="usrah" required>
+						<option value="">-- Choose a Usrah --</option>
+					</select>
+				</div>
+
+				<div class="form-group">
+					<label for="attendanceDate">Date of Meeting<span class="required">*</span></label>
+					<input type="date" id="attendanceDate" name="attendanceDate" required>
+				</div>
+
+				<div class="form-group">
+					<label for="brotherhoodLevel">Brotherhood Level (1-5) <span class="required">*</span></label>
+					<div class="level-selector">
+						<input type="radio" id="bro1" name="brotherhoodLevel" value="1" required>
+					<label for="bro1" class="level-label level-1">😢 1</label>
+					<input type="radio" id="bro2" name="brotherhoodLevel" value="2">
+					<label for="bro2" class="level-label level-2">😐 2</label>
+					<input type="radio" id="bro3" name="brotherhoodLevel" value="3">
+					<label for="bro3" class="level-label level-3">🙂 3</label>
+					<input type="radio" id="bro4" name="brotherhoodLevel" value="4">
+					<label for="bro4" class="level-label level-4">😊 4</label>
+					<input type="radio" id="bro5" name="brotherhoodLevel" value="5">
+					<label for="bro5" class="level-label level-5">😄 5</label>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label for="curriculumProgress">Curriculum Progress (1-5) <span class="required">*</span></label>
+					<div class="level-selector">
+						<input type="radio" id="curr1" name="curriculumProgress" value="1" required>
+					<label for="curr1" class="level-label level-1">😢 1</label>
+					<input type="radio" id="curr2" name="curriculumProgress" value="2">
+					<label for="curr2" class="level-label level-2">😐 2</label>
+					<input type="radio" id="curr3" name="curriculumProgress" value="3">
+					<label for="curr3" class="level-label level-3">🙂 3</label>
+					<input type="radio" id="curr4" name="curriculumProgress" value="4">
+					<label for="curr4" class="level-label level-4">😊 4</label>
+					<input type="radio" id="curr5" name="curriculumProgress" value="5">
+					<label for="curr5" class="level-label level-5">😄 5</label>
+					</div>
+				</div>
+
+				<div id="attendeesContainer" style="display: none;">
+					<div class="section-header" style="margin-top: 30px;">Mark Attendance</div>
+					<div id="attendeesList"></div>
+				</div>
+
+				<button type="submit" class="submit-button" id="submitBtn">Submit Attendance</button>
+
+				<div class="success-message" id="successMessage" style="display: none;">
+					Attendance recorded successfully!
+				</div>
+				<div class="error-message" id="errorMessage" style="display: none;"></div>
+			</form>
+		</div>
+	</div>
+
+	<style>
+		/* Match application.html styling */
+		body {
+			padding: 0;
+			font-size: 17px;
+		}
+
+		.container {
+			max-width: 700px;
+			margin: 0 auto;
+			padding: 0 20px 60px;
+		}
+
+		header {
+			text-align: center;
+			padding: 60px 20px 40px;
+			margin-top: 20px;
+		}
+
+		h1 {
+			font-family: 'Press Start 2P', cursive;
+			font-size: clamp(20px, 5vw, 36px);
+			color: #ffffff;
+			text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+			margin-bottom: 20px;
+			line-height: 1.5;
+		}
+
+		.card {
+			background: rgba(30, 41, 59, 0.6);
+			backdrop-filter: blur(10px);
+			border: 2px solid rgba(148, 163, 184, 0.2);
+			border-radius: 12px;
+			padding: clamp(20px, 5vw, 40px);
+			box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+		}
+
+		.form-group {
+			margin-bottom: 24px;
+		}
+
+		label {
+			display: block;
+			margin-bottom: 8px;
+			color: #e2e8f0;
+			font-size: clamp(15px, 2.5vw, 17px);
+			font-weight: 500;
+		}
+
+		.required {
+			color: #ef4444;
+			margin-left: 4px;
+		}
+
+		select,
+		input[type="date"] {
+			width: 100%;
+			padding: 12px 16px;
+			background: rgba(15, 23, 42, 0.6);
+			border: 2px solid rgba(148, 163, 184, 0.3);
+			border-radius: 8px;
+			color: #ffffff;
+			font-size: clamp(14px, 2.5vw, 16px);
+			font-family: 'Inter', sans-serif;
+			transition: all 0.3s ease;
+		}
+
+		select:focus,
+		input[type="date"]:focus {
+			outline: none;
+			border-color: #4ade80;
+			box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.1);
+		}
+
+		.level-selector {
+			display: flex;
+			gap: 12px;
+			flex-wrap: wrap;
+			margin-top: 12px;
+		}
+
+		.level-selector input[type="radio"] {
+			display: none;
+		}
+
+		.level-label {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 6px;
+			min-width: 65px;
+			height: 45px;
+			padding: 0 12px;
+			background: rgba(15, 23, 42, 0.6);
+			border: 2px solid rgba(148, 163, 184, 0.3);
+			border-radius: 6px;
+			color: #e2e8f0;
+			cursor: pointer;
+			font-weight: 600;
+			font-size: 14px;
+			transition: all 0.3s ease;
+			margin: 0;
+		}
+
+		/* Level 1 - Red (Low) */
+		.level-1 {
+			background: rgba(239, 68, 68, 0.08);
+			border-color: rgba(239, 68, 68, 0.3);
+			color: rgba(248, 113, 113, 0.7);
+		}
+		.level-1:hover {
+			background: rgba(239, 68, 68, 0.2);
+			border-color: rgba(239, 68, 68, 0.6);
+			color: #f87171;
+		}
+		.level-selector input[type="radio"]:checked + .level-1 {
+			background: rgba(239, 68, 68, 0.6);
+			border-color: #ef4444;
+			border-width: 3px;
+			color: #fca5a5;
+			box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 0 40px rgba(239, 68, 68, 0.4);
+			transform: scale(1.08);
+		}
+
+		/* Level 2 - Orange */
+		.level-2 {
+			background: rgba(249, 115, 22, 0.08);
+			border-color: rgba(249, 115, 22, 0.3);
+			color: rgba(251, 146, 60, 0.7);
+		}
+		.level-2:hover {
+			background: rgba(249, 115, 22, 0.2);
+			border-color: rgba(249, 115, 22, 0.6);
+			color: #fb923c;
+		}
+		.level-selector input[type="radio"]:checked + .level-2 {
+			background: rgba(249, 115, 22, 0.6);
+			border-color: #f97316;
+			border-width: 3px;
+			color: #fdba74;
+			box-shadow: 0 0 20px rgba(249, 115, 22, 0.8), 0 0 40px rgba(249, 115, 22, 0.4);
+			transform: scale(1.08);
+		}
+
+		/* Level 3 - Yellow */
+		.level-3 {
+			background: rgba(234, 179, 8, 0.08);
+			border-color: rgba(234, 179, 8, 0.3);
+			color: rgba(251, 191, 36, 0.7);
+		}
+		.level-3:hover {
+			background: rgba(234, 179, 8, 0.2);
+			border-color: rgba(234, 179, 8, 0.6);
+			color: #fbbf24;
+		}
+		.level-selector input[type="radio"]:checked + .level-3 {
+			background: rgba(234, 179, 8, 0.6);
+			border-color: #eab308;
+			border-width: 3px;
+			color: #fde047;
+			box-shadow: 0 0 20px rgba(234, 179, 8, 0.8), 0 0 40px rgba(234, 179, 8, 0.4);
+			transform: scale(1.08);
+		}
+
+		/* Level 4 - Light Green */
+		.level-4 {
+			background: rgba(132, 204, 22, 0.08);
+			border-color: rgba(132, 204, 22, 0.3);
+			color: rgba(163, 230, 53, 0.7);
+		}
+		.level-4:hover {
+			background: rgba(132, 204, 22, 0.2);
+			border-color: rgba(132, 204, 22, 0.6);
+			color: #a3e635;
+		}
+		.level-selector input[type="radio"]:checked + .level-4 {
+			background: rgba(132, 204, 22, 0.6);
+			border-color: #84cc16;
+			border-width: 3px;
+			color: #bef264;
+			box-shadow: 0 0 20px rgba(132, 204, 22, 0.8), 0 0 40px rgba(132, 204, 22, 0.4);
+			transform: scale(1.08);
+		}
+
+		/* Level 5 - Green (High) */
+		.level-5 {
+			background: rgba(34, 197, 94, 0.08);
+			border-color: rgba(34, 197, 94, 0.3);
+			color: rgba(74, 222, 128, 0.7);
+		}
+		.level-5:hover {
+			background: rgba(34, 197, 94, 0.2);
+			border-color: rgba(34, 197, 94, 0.6);
+			color: #4ade80;
+		}
+		.level-selector input[type="radio"]:checked + .level-5 {
+			background: rgba(34, 197, 94, 0.6);
+			border-color: #22c55e;
+			border-width: 3px;
+			color: #86efac;
+			box-shadow: 0 0 20px rgba(34, 197, 94, 0.8), 0 0 40px rgba(34, 197, 94, 0.4);
+			transform: scale(1.08);
+		}
+
+		.section-header {
+			font-family: 'Press Start 2P', cursive;
+			font-size: clamp(12px, 3vw, 16px);
+			color: #4ade80;
+			margin: 30px 0 20px 0;
+			padding-bottom: 10px;
+			border-bottom: 2px solid rgba(74, 222, 128, 0.3);
+			line-height: 1.6;
+		}
+
+		.section-header:first-child {
+			margin-top: 0;
+		}
+
+		.attendee-item {
+			display: flex;
+			align-items: center;
+			padding: 12px;
+			margin-bottom: 8px;
+			background: rgba(15, 23, 42, 0.4);
+			border: 2px solid rgba(148, 163, 184, 0.2);
+			border-radius: 6px;
+			transition: all 0.3s ease;
+		}
+
+		.attendee-item:hover {
+			background: rgba(34, 197, 94, 0.05);
+			border-color: rgba(34, 197, 94, 0.3);
+		}
+
+		.attendee-item input[type="checkbox"] {
+			width: 20px;
+			height: 20px;
+			margin-right: 12px;
+			cursor: pointer;
+			accent-color: #22c55e;
+		}
+
+		.attendee-item label {
+			margin: 0;
+			flex: 1;
+			cursor: pointer;
+			color: #e2e8f0;
+			font-weight: 400;
+		}
+
+		.success-message {
+			display: none;
+			background: rgba(74, 222, 128, 0.1);
+			border: 2px solid #4ade80;
+			border-radius: 8px;
+			padding: 20px;
+			margin-top: 20px;
+			text-align: center;
+			font-family: 'Press Start 2P', cursive;
+			font-size: clamp(10px, 2.5vw, 12px);
+			line-height: 1.8;
+			color: #4ade80;
+		}
+
+		.error-message {
+			display: none;
+			background: rgba(239, 68, 68, 0.1);
+			border: 2px solid #ef4444;
+			border-radius: 8px;
+			padding: 20px;
+			margin-top: 20px;
+			text-align: center;
+			font-size: clamp(12px, 2.5vw, 14px);
+			color: #ef4444;
+		}
+
+		/* Submit Button - Pixel Art Style */
+		.submit-button {
+			font-family: 'Press Start 2P', cursive;
+			font-size: clamp(14px, 3vw, 18px);
+			padding: 18px 40px;
+			background: #4ade80;
+			color: #0f172a;
+			border: 4px solid #22c55e;
+			border-radius: 0;
+			cursor: pointer;
+			text-transform: uppercase;
+			box-shadow: 
+				6px 6px 0px #22c55e,
+				6px 6px 0px 2px rgba(0, 0, 0, 0.3);
+			transition: all 0.1s ease;
+			width: 100%;
+			margin-top: 30px;
+			position: relative;
+		}
+
+		.submit-button:hover:not(:disabled) {
+			background: #22c55e;
+			transform: translate(2px, 2px);
+			box-shadow: 
+				4px 4px 0px #16a34a,
+				4px 4px 0px 2px rgba(0, 0, 0, 0.3);
+		}
+
+		.submit-button:active:not(:disabled) {
+			transform: translate(6px, 6px);
+			box-shadow: none;
+		}
+
+		.submit-button:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+
+		@media (max-width: 640px) {
+			header {
+				padding: 40px 15px 30px;
+			}
+			
+			.card {
+				padding: 20px;
+			}
+
+			.submit-button {
+				padding: 16px 30px;
+			}
+		}
+	</style>
+
+	<script type="module">
+		import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+		
+		const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+		const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
+		const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+		const usrahSelect = document.getElementById('usrahSelect');
+		const attendeesList = document.getElementById('attendeesList');
+		const attendeesContainer = document.getElementById('attendeesContainer');
+		const form = document.getElementById('attendanceForm');
+		const successMessage = document.getElementById('successMessage');
+		const errorMessage = document.getElementById('errorMessage');
+
+		let allUsrahs = [];
+		let allPeople = [];
+
+		// Load usrahs on page load
+		async function loadUsrahs() {
+			try {
+				const { data, error } = await supabase.from('usrah').select('*');
+				if (error) throw error;
+				allUsrahs = data || [];
+				populateUsrahDropdown();
+			} catch (err) {
+				console.error('Error loading usrahs:', err);
+				errorMessage.textContent = 'Error loading usrahs. Please refresh the page.';
+				errorMessage.style.display = 'block';
+			}
+		}
+
+		// Load all people once
+		async function loadPeople() {
+			try {
+				const { data, error } = await supabase.from('people').select('*');
+				if (error) throw error;
+				allPeople = data || [];
+			} catch (err) {
+				console.error('Error loading people:', err);
+			}
+		}
+
+		function populateUsrahDropdown() {
+			usrahSelect.innerHTML = '<option value="">-- Choose a Usrah --</option>';
+			allUsrahs.forEach(usrah => {
+				const option = document.createElement('option');
+				option.value = usrah.usrah_id;
+				option.textContent = usrah.usrah_name;
+				usrahSelect.appendChild(option);
+			});
+		}
+
+		function renderAttendees(usrahId) {
+			const usrahPeople = allPeople.filter(p => p.usrah_id === usrahId);
+			
+			if (usrahPeople.length === 0) {
+				attendeesList.innerHTML = '<p style="color: #94a3b8; text-align: center;">No members in this usrah.</p>';
+				return;
+			}
+
+			attendeesList.innerHTML = usrahPeople.map(person => `
+				<div class="attendee-item">
+					<input type="checkbox" id="person_${person.person_id}" name="attendees" value="${person.person_id}">
+					<label for="person_${person.person_id}">${person.name}</label>
+				</div>
+			`).join('');
+		}
+
+		usrahSelect.addEventListener('change', (e) => {
+			if (e.target.value) {
+				renderAttendees(e.target.value);
+				attendeesContainer.style.display = 'block';
+			} else {
+				attendeesContainer.style.display = 'none';
+			}
+		});
+
+		form.addEventListener('submit', async (e) => {
+			e.preventDefault();
+
+			const usrahId = usrahSelect.value;
+			const date = document.getElementById('attendanceDate').value;
+			const brotherhoodLevel = document.querySelector('input[name="brotherhoodLevel"]:checked')?.value;
+			const curriculumProgress = document.querySelector('input[name="curriculumProgress"]:checked')?.value;
+			const selectedAttendees = Array.from(document.querySelectorAll('input[name="attendees"]:checked')).map(cb => cb.value);
+
+			if (!usrahId || !date || !brotherhoodLevel || !curriculumProgress) {
+				errorMessage.textContent = 'Please fill in all required fields.';
+				errorMessage.style.display = 'block';
+				return;
+			}
+
+			try {
+				// Insert attendance record
+				const { error } = await supabase.from('attendance').insert([{
+					usrah_id: usrahId,
+					attendance_date: date,
+					attendee_ids: selectedAttendees,
+					brotherhood_level: parseInt(brotherhoodLevel),
+					curriculum_progress: parseInt(curriculumProgress)
+				}]);
+
+				if (error) throw error;
+
+				successMessage.style.display = 'block';
+				errorMessage.style.display = 'none';
+				form.reset();
+				attendeesContainer.style.display = 'none';
+
+				setTimeout(() => {
+					window.location.href = 'index.html';
+				}, 3000);
+			} catch (err) {
+				console.error('Error submitting attendance:', err);
+				errorMessage.textContent = 'Error submitting attendance. Please try again.';
+				errorMessage.style.display = 'block';
+			}
+		});
+
+		// Initialize
+		loadUsrahs();
+		loadPeople();
+	</script>
+</body>
+</html>

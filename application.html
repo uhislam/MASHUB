@@ -6,22 +6,327 @@
     <title>Usra Application - Growth is a choice</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
     <style>
-        * {
-            margin: 0;
+        /* Application-specific overrides and additions */
+        body {
             padding: 0;
-            box-sizing: border-box;
+            font-size: 17px;
+        }
+        
+        .container {
+            padding: 0 20px 60px;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(180deg, #1a2a4a 0%, #0d1829 100%);
+        /* Progress Bar */
+        .progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80 0%, #22c55e 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 60px 20px 40px;
+            margin-top: 20px;
+        }
+
+        .pixel-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(20px, 5vw, 36px);
             color: #ffffff;
-            min-height: 100vh;
-            padding: 0;
-            overflow-x: hidden;
-            font-size: 17px;
+            text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .subtitle {
+            font-size: clamp(14px, 3vw, 18px);
+            color: #94a3b8;
+            margin-top: 15px;
+            font-style: italic;
+        }
+
+        /* Form Card */
+        .form-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: clamp(20px, 5vw, 40px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Section Headers */
+        .section-header {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(12px, 3vw, 16px);
+            color: #4ade80;
+            margin: 30px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(74, 222, 128, 0.3);
+            line-height: 1.6;
+        }
+
+        .section-header:first-child {
+            margin-top: 0;
+        }
+
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+            font-size: clamp(15px, 2.5vw, 17px);
+            font-weight: 500;
+        }
+
+        .required {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="date"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px solid rgba(148, 163, 184, 0.3);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: clamp(14px, 2.5vw, 16px);
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="tel"]:focus,
+        input[type="date"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #4ade80;
+            box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            line-height: 1.6;
+        }
+
+        .muted {
+            color: #94a3b8;
+            font-size: clamp(13px, 2.5vw, 15px);
+        }
+
+        /* Radio Buttons */
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: clamp(14px, 2.5vw, 16px);
+        }
+
+        input[type="radio"] {
+            margin-right: 8px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            accent-color: #4ade80;
+        }
+
+        /* Conditional Fields */
+        .conditional-field {
+            margin-top: 16px;
+            padding-left: 20px;
+            border-left: 3px solid rgba(74, 222, 128, 0.3);
+        }
+
+        /* Checkbox */
+        .checkbox-group {
+            display: flex;
+            align-items: start;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(74, 222, 128, 0.05);
+            border: 2px solid rgba(74, 222, 128, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-group:hover {
+            background: rgba(74, 222, 128, 0.1);
+            border-color: rgba(74, 222, 128, 0.4);
+        }
+
+        input[type="checkbox"] {
+            margin-top: 4px;
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            accent-color: #4ade80;
+            flex-shrink: 0;
+        }
+
+        .checkbox-label {
+            cursor: pointer;
+            line-height: 1.6;
+            font-size: clamp(14px, 2.5vw, 15px);
+        }
+
+        /* Submit Button - Pixel Art Style */
+        .submit-button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(14px, 3vw, 18px);
+            padding: 18px 40px;
+            background: #4ade80;
+            color: #0f172a;
+            border: 4px solid #22c55e;
+            border-radius: 0;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 
+                6px 6px 0px #22c55e,
+                6px 6px 0px 2px rgba(0, 0, 0, 0.3);
+            transition: all 0.1s ease;
+            width: 100%;
+            margin-top: 30px;
+            position: relative;
+        }
+
+        .submit-button:hover:not(:disabled) {
+            background: #22c55e;
+            transform: translate(2px, 2px);
+            box-shadow: 
+                4px 4px 0px #16a34a,
+                4px 4px 0px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .submit-button:active:not(:disabled) {
+            transform: translate(6px, 6px);
+            box-shadow: none;
+        }
+
+        .submit-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Loading State */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: #0f172a;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Success Message */
+        .success-message {
+            display: none;
+            background: rgba(74, 222, 128, 0.1);
+            border: 2px solid #4ade80;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(10px, 2.5vw, 12px);
+            line-height: 1.8;
+            color: #4ade80;
+        }
+
+        /* Error Message */
+        .error-message {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid #ef4444;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: clamp(12px, 2.5vw, 14px);
+            color: #ef4444;
+        }
+
+        .upload-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: rgba(15, 27, 47, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 8px;
+            color: #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .upload-label:hover {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .header {
+                padding: 40px 15px 30px;
+            }
+
+            .form-card {
+                padding: 20px;
+            }
+
+            .radio-group {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .submit-button {
+                padding: 16px 30px;
+            }
         }
 
         /* Progress Bar */
@@ -675,16 +980,39 @@
             // Combine with double line breaks
             const combinedNotes = longAnswers.join('\n\n')
             
-            // Handle file upload if present
+            const personId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2,8)}`
             let scheduleFileUrl = null
-            const scheduleFile = formData.get('scheduleUpload')
-            if (scheduleFile && scheduleFile.size > 0) {
-                // For now, just note that a file was uploaded (file handling would need storage setup)
-                scheduleFileUrl = `File uploaded: ${scheduleFile.name}`
+            const scheduleFile = scheduleUpload?.files?.[0]
+            if (scheduleFile) {
+                const maxSize = 5 * 1024 * 1024 // 5MB limit
+                const allowed = [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'image/jpeg',
+                    'image/png'
+                ]
+                if (scheduleFile.size > maxSize) throw new Error('File too large (max 5MB)')
+                if (scheduleFile.type && !allowed.includes(scheduleFile.type)) throw new Error('Unsupported file type')
+
+                const path = `schedules/${personId}-${Date.now()}-${scheduleFile.name}`
+                const upload = await supabase.storage
+                    .from('usrah-schedules')
+                    .upload(path, scheduleFile, {
+                        cacheControl: '3600',
+                        upsert: true,
+                        contentType: scheduleFile.type || 'application/octet-stream'
+                    })
+                if (upload.error) throw upload.error
+
+                const { data: publicData } = supabase.storage
+                    .from('usrah-schedules')
+                    .getPublicUrl(path)
+                scheduleFileUrl = publicData?.publicUrl || null
             }
             
             const personData = {
-                person_id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+                person_id: personId,
                 name: formData.get('name'),
                 email: formData.get('email'),
                 phone: formData.get('phone'),
@@ -696,7 +1024,6 @@
                 class_schedule: formData.get('classSchedule') || scheduleFileUrl || null,
                 usra_location_preference: formData.get('usraLocation'),
                 specific_preference: formData.get('specificPreference') || null,
-                application_status: 'Pending',
                 created_at: new Date().toISOString()
             }
 
@@ -717,11 +1044,10 @@
                 // Scroll to success message
                 successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
-                // Reset button after delay
+                // Redirect to about page after short delay
                 setTimeout(() => {
-                    submitBtn.disabled = false
-                    submitBtn.innerHTML = 'START'
-                }, 3000)
+                    window.location.href = 'about.html'
+                }, 2000)
 
             } catch (error) {
                 console.error('Error submitting application:', error)

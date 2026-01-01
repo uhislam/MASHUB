@@ -79,7 +79,7 @@
     }
     .prompt.active { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 2px rgba(34,211,238,0.5), 0 16px 48px rgba(34,211,238,0.32); }
     .prompt .title { font-weight: 700; margin-bottom: 6px; letter-spacing: 0.2px; }
-    .prompt .body { color: var(--text); line-height: 1.6; min-height: 40px; }
+    .prompt .body { color: var(--text); line-height: 1.6; min-height: 40px; white-space: pre-line; }
     .prompt.past { opacity: 0.35; color: var(--muted); pointer-events: none; }
     label { display: block; font-weight: 600; margin-bottom: 6px; }
     input, textarea, button { font-family: 'Inter', sans-serif; }
@@ -170,7 +170,8 @@
       <div class="terminal-top">
         <div class="dots"><span></span><span></span><span></span></div>
         <div class="terminal-title">PDP Shell · Assistant live</div>
-        <div class="terminal-meta">GPT-5.1-Codex-Max</div>
+        <div class="terminal-meta" id="terminal-meta">5.1-Tarbiya-Max</div>
+        <button id="logout-btn" class="hidden" style="background: rgba(248,113,113,0.2); color: #f87171; padding: 4px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(248,113,113,0.3); font-weight: 600; transition: all 0.2s;">LOGOUT</button>
       </div>
       <div id="prompt-history"></div>
       <div id="current-prompt-container"></div>
@@ -182,53 +183,313 @@
 
     const promptHistory = document.getElementById('prompt-history')
     const currentPromptContainer = document.getElementById('current-prompt-container')
+    const logoutBtn = document.getElementById('logout-btn')
+    const terminalMeta = document.getElementById('terminal-meta')
     let person = null
     let existingPdp = null
     let currentItemIndex = 0
     let countdownInterval = null
     let typeInterval = null
+    let flowItems = []
+    let pdpGoals = { goal1: { category: '' }, goal2: { category: '' }, goal3: { category: '' }, accountability: '' }
 
-    const flowItems = [
-      {
-        type: 'lookup',
-        title: 'Personal Development Plan (PDP)',
-        fields: [
-          { id: 'email', label: 'Email', type: 'email', placeholder: 'you@example.com' },
-          { id: 'birthday', label: 'Birthday', type: 'date', placeholder: '' }
-        ]
-      },
-      {
-        type: 'prompt',
-        title: 'Pause and renew intention',
-        body: 'Take a few seconds to renew your intention before you write.',
-        countdown: 30,
-        showTimer: true
-      },
-      {
-        type: 'prompt',
-        title: 'Why a PDP is important',
-        body: 'Blurb here',
-        countdown: 0,
-        showTimer: false
-      },
-       {
-        type: 'prompt',
-        title: 'Why a PDP is important',
-        body: 'Blurb here',
-        countdown: 0,
-        showTimer: false
-      },
-      {
-        type: 'editor',
-        title: 'Your PDP'
-      }, {
-        type: 'prompt',
-        title: 'Why a PDP is important',
-        body: 'Blurb here',
-        countdown: 0,
-        showTimer: false
-      }
+    const reflectionQuestions = [
+      'If you were given 30 minutes with the Prophet Muhammad ﷺ today, what would you ask him or seek guidance about—and what does that reveal about where you are in life right now?',
+      'What do you believe your mission in life is at this moment—and how aligned are your daily choices with that mission?',
+      'Where do you feel the greatest tension between your Islamic values and the dominant culture around you, and how are you currently navigating that tension?',
+      'When you experience failure or hardship, how do you distinguish between personal shortcomings and the decree or wisdom of Allah?',
+      'What personal weakness, habit, or “illness of the heart” most obstructs you from becoming the person you want to be—and what would overcoming it actually require from you?',
+      'Why do you think Allah allows sincere believers to struggle, suffer, or feel delayed in their progress—and what lesson might that hold for your own life?',
+      'What does success mean to you right now, and how has Islam shaped—or failed to shape—that definition?',
+      'Do you see yourself as someone meant to work alone or as part of a collective effort or movement, and what responsibility does that place on you?',
+      'If you knew you had only a few years left to live, what would you change about how you spend your time, energy, and attention?',
+      'What legacy do you hope to leave behind—not in titles or achievements, but in people—and what are you doing today that contributes to that legacy?'
     ]
+
+    function getRandomReflectionQuestion() {
+      const idx = Math.floor(Math.random() * reflectionQuestions.length)
+      return reflectionQuestions[idx]
+    }
+
+    // Session management functions
+    function saveSession(personData) {
+      localStorage.setItem('pdp_session', JSON.stringify({
+        person: personData,
+        timestamp: new Date().toISOString()
+      }))
+    }
+
+    function loadSession() {
+      const session = localStorage.getItem('pdp_session')
+      if (!session) return null
+      try {
+        const data = JSON.parse(session)
+        // Check if session is less than 7 days old
+        const sessionAge = (new Date() - new Date(data.timestamp)) / (1000 * 60 * 60 * 24)
+        if (sessionAge > 7) {
+          clearSession()
+          return null
+        }
+        return data.person
+      } catch (err) {
+        return null
+      }
+    }
+
+    function clearSession() {
+      localStorage.removeItem('pdp_session')
+    }
+
+    function updateTerminalMeta() {
+      if (person) {
+        const firstName = person.name?.split(' ')[0] || 'User'
+        terminalMeta.textContent = `${firstName} · Authenticated`
+        logoutBtn.classList.remove('hidden')
+      } else {
+        terminalMeta.textContent = '5.1-Tarbiya-Max'
+        logoutBtn.classList.add('hidden')
+      }
+    }
+
+    // Logout handler
+    logoutBtn.addEventListener('click', () => {
+      if (confirm('Are you sure you want to logout?')) {
+        clearSession()
+        person = null
+        existingPdp = null
+        currentItemIndex = 0
+        flowItems = getFlowItems(false)
+        promptHistory.innerHTML = ''
+        updateTerminalMeta()
+        renderCurrentItem()
+      }
+    })
+
+    function getFlowItems(hasPdp, pdpData) {
+      const baseFlow = [
+        {
+          type: 'lookup',
+          title: 'Personal Development Plan',
+          fields: [
+            { id: 'email', label: 'Email', type: 'email', placeholder: 'you@example.com' },
+            { id: 'birthday', label: 'Birthday', type: 'date', placeholder: '' }
+          ]
+        }
+      ]
+
+      if (!hasPdp) {
+        // Branch 1: No PDP exists - create first one with structured goals
+        return [
+          ...baseFlow,
+          {
+            type: 'prompt',
+            body: `Before we begin, ${person?.name?.split(' ')[0] || 'friend'}, let's take a few seconds to renew your intention. Why do you want to grow? What impact do you hope to make? \n \n "Indeed Actions are judged by Intentions" \n - Prophet Muhammad ﷺ  `,
+            countdown: 30,
+            showTimer: true
+          },
+          {
+            type: 'prompt',
+            body: `Take 2 minutes to reflect on your recent spiritual state. How have you been feeling, and what do you think is driving it? Be honest with yourself before we plan forward.`,
+            countdown: 120,
+            showTimer: true
+          },
+          {
+            type: 'prompt',
+            body: `Alright ${person?.name?.split(' ')[0] || 'friend'}, here's how this works: A Personal Development Plan is your personal roadmap for growth. You'll set 3 focused goals that matter to you. For each goal, you'll choose a monthly milestone to track your progress and a daily habit to build momentum.`,
+            countdown: 0,
+            showTimer: false
+          },
+          {
+            type: 'prompt',
+            body: `Think about the areas of your life where you want to see real change. Maybe it's your spiritual practice, your personal character, or your impact in the community. What specific, measurable goals can you commit to working on this month?`,
+            countdown: 0,
+            showTimer: false,
+            continueText: 'Set My Goals'
+          },
+          {
+            type: 'category-select',
+            goalNumber: 1,
+            title: 'Goal #1 - Select Category',
+            categories: ['Prayer', 'Fasting', 'Saqadah', 'Qiyam', 'Dhikr', 'Hadith', 'Ilm Contemporary', 'Education', 'Islamic Work', 'Professional', 'Dawah', 'Manners', 'Physical', 'Teamwork', 'Other']
+          },
+          {
+            type: 'goal-input',
+            goalNumber: 1,
+            title: 'Goal #1',
+            placeholder: 'What do you want to achieve this month?'
+          },
+          {
+            type: 'milestone-input',
+            goalNumber: 1,
+            title: 'Monthly Milestone for Goal #1',
+            placeholder: 'What measurable progress will you make this month?'
+          },
+          {
+            type: 'habit-input',
+            goalNumber: 1,
+            title: 'Daily Habit for Goal #1',
+            placeholder: 'What will you do every day to reach this goal?'
+          },
+          {
+            type: 'category-select',
+            goalNumber: 2,
+            title: 'Goal #2 - Select Category',
+            categories: ['Prayer', 'Fasting', 'Saqadah', 'Qiyam', 'Dhikr', 'Hadith', 'Ilm Contemporary', 'Education', 'Islamic Work', 'Professional', 'Dawah', 'Manners', 'Physical', 'Teamwork', 'Other']
+          },
+          {
+            type: 'goal-input',
+            goalNumber: 2,
+            title: 'Goal #2',
+            placeholder: 'What do you want to achieve this month?'
+          },
+          {
+            type: 'milestone-input',
+            goalNumber: 2,
+            title: 'Monthly Milestone for Goal #2',
+            placeholder: 'What measurable progress will you make this month?'
+          },
+          {
+            type: 'habit-input',
+            goalNumber: 2,
+            title: 'Daily Habit for Goal #2',
+            placeholder: 'What will you do every day to reach this goal?'
+          },
+          {
+            type: 'category-select',
+            goalNumber: 3,
+            title: 'Goal #3 - Select Category',
+            categories: ['Prayer', 'Fasting', 'Saqadah', 'Qiyam', 'Dhikr', 'Hadith', 'Ilm Contemporary', 'Education', 'Islamic Work', 'Professional', 'Dawah', 'Manners', 'Physical', 'Teamwork', 'Other']
+          },
+          {
+            type: 'goal-input',
+            goalNumber: 3,
+            title: 'Goal #3',
+            placeholder: 'What do you want to achieve this month?'
+          },
+          {
+            type: 'milestone-input',
+            goalNumber: 3,
+            title: 'Monthly Milestone for Goal #3',
+            placeholder: 'What measurable progress will you make this month?'
+          },
+          {
+            type: 'habit-input',
+            goalNumber: 3,
+            title: 'Daily Habit for Goal #3',
+            placeholder: 'What will you do every day to reach this goal?'
+          },
+          {
+            type: 'accountability-input',
+            title: 'Accountability Plan',
+            placeholder: 'Who will help keep you accountable? How will you track progress?'
+          },
+          {
+            type: 'review-and-save',
+            title: 'Review Your PDP'
+          }
+        ]
+      }
+
+      // Check how many days since last update
+      const lastUpdate = new Date(pdpData.updated_at || pdpData.created_at)
+      const today = new Date()
+      const daysSince = Math.floor((today - lastUpdate) / (1000 * 60 * 60 * 24))
+
+      if (daysSince < 25) {
+        // Branch 2: Recent PDP - gentle reminder + optional reflection
+        const daysLeft = 25 - daysSince
+        const reflectionQuestion = getRandomReflectionQuestion()
+        const reflectionFlow = [
+          ...baseFlow,
+          {
+            type: 'prompt',
+            body: `Hey ${person?.name?.split(' ')[0] || 'friend'}, welcome back! \n\nYour last PDP update was ${daysSince} day${daysSince === 1 ? '' : 's'} ago. Your next monthly check-in opens in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`,
+            countdown: 0,
+            showTimer: false,
+            continueText: 'Got it'
+          },
+          {
+            type: 'prompt-choice',
+            body: `Feel like a 3-minute reflection just for fun? We can pick a deep question and let you think on it. Up for it?`,
+            yesNext: 'reflection',
+            noNext: 'close'
+          },
+          {
+            type: 'reflection-session',
+            question: reflectionQuestion
+          },
+          {
+            type: 'close-session',
+            body: 'All good. Keep working on your goals! See you at your next check-in. 🌟'
+          }
+        ]
+        return reflectionFlow
+      } else {
+        // Branch 3: Monthly check-in - review and update goals one by one
+        const goals = parsePDPGoals(pdpData.content)
+        const checkInFlow = [
+          ...baseFlow,
+          {
+            type: 'prompt',
+            body: `Welcome back, ${person?.name?.split(' ')[0] || 'friend'}! \n\nIt's been a month since your last PDP update. How did it go? Let's take some time to reflect on your progress and set your intentions for the next month.`,
+            countdown: 0,
+            showTimer: false,
+            continueText: 'Start Check-in'
+          },
+          {
+            type: 'prompt',
+            body: `Before we dive in, ${person?.name?.split(' ')[0] || 'friend'}, let's take a moment to center ourselves and renew your intention. Why are you doing this work? What's driving you to grow? \n \n "Indeed Actions are judged by Intentions" \n - Prophet Muhammad ﷺ  `,
+            countdown: 30,
+            showTimer: true
+          }
+        ]
+        
+        // Add reflection and update flow for each goal
+        goals.forEach((goal, index) => {
+          checkInFlow.push(
+            {
+              type: 'goal-reflection',
+              goalNumber: index + 1,
+              category: goal.category,
+              goalText: goal.goal,
+              milestone: goal.milestone,
+              habit: goal.habit
+            },
+            {
+              type: 'goal-adjustment-input',
+              goalNumber: index + 1,
+              category: goal.category,
+              currentGoal: goal.goal
+            },
+            {
+              type: 'new-milestone-input',
+              goalNumber: index + 1,
+              category: goal.category
+            }
+          )
+        })
+        
+        // Add accountability update
+        const accountabilityMatch = pdpData.content.match(/ACCOUNTABILITY PLAN:\s*([\s\S]+)$/)
+        const currentAccountability = accountabilityMatch ? accountabilityMatch[1].trim() : ''
+        checkInFlow.push(
+          {
+            type: 'accountability-update-input',
+            title: 'Update Accountability Plan',
+            currentAccountability
+          },
+          {
+            type: 'review-and-save',
+            title: 'Review Your Updated PDP'
+          }
+        )
+        
+        return checkInFlow
+      }
+    }
+
+    // Initialize with lookup-only flow
+    flowItems = getFlowItems(false)
 
     function renderCurrentItem() {
       if (currentItemIndex >= flowItems.length) return
@@ -236,6 +497,22 @@
       if (item.type === 'lookup') renderLookup(item)
       if (item.type === 'prompt') renderPrompt(item)
       if (item.type === 'editor') renderEditor(item)
+      if (item.type === 'reminder') renderReminder(item)
+      if (item.type === 'review') renderReview(item)
+      if (item.type === 'category-select') renderCategorySelect(item)
+      if (item.type === 'prompt-choice') renderPromptChoice(item)
+      if (item.type === 'reflection-session') renderReflectionSession(item)
+      if (item.type === 'goal-rating') renderGoalRating(item)
+      if (item.type === 'goal-reflection') renderGoalReflection(item)
+      if (item.type === 'goal-adjustment-input') renderGoalAdjustmentInput(item)
+      if (item.type === 'new-milestone-input') renderNewMilestoneInput(item)
+      if (item.type === 'accountability-update-input') renderAccountabilityUpdateInput(item)
+      if (item.type === 'goal-input') renderGoalInput(item)
+      if (item.type === 'milestone-input') renderMilestoneInput(item)
+      if (item.type === 'habit-input') renderHabitInput(item)
+      if (item.type === 'accountability-input') renderAccountabilityInput(item)
+      if (item.type === 'review-and-save') renderReviewAndSave(item)
+      if (item.type === 'close-session') renderCloseSession(item)
     }
 
     function renderLookup(item) {
@@ -265,6 +542,12 @@
       currentPromptContainer.appendChild(wrap)
       document.getElementById('flow-btn').onclick = handleLookup
       scrollActiveIntoView(wrap)
+      // mobile keyboard handling
+      wrap.querySelectorAll('input, textarea').forEach(el => {
+        el.addEventListener('focus', () => {
+          setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+        })
+      })
     }
 
     async function handleLookup() {
@@ -286,8 +569,12 @@
           .single()
         if (error) throw error
         person = data
+        saveSession(person)
+        updateTerminalMeta()
         flowStatus.textContent = 'Found. Loading...'
         await loadExistingPdp()
+        // Rebuild flow based on whether PDP exists and when it was last updated
+        flowItems = getFlowItems(!!existingPdp, existingPdp)
         archiveCurrentItem()
         currentItemIndex += 1
         renderCurrentItem()
@@ -315,12 +602,13 @@
       wrap.className = 'prompt active'
       wrap.id = 'current-item'
       const needsTimer = item.showTimer && item.countdown > 0
+      const continueLabel = item.continueText || 'Continue'
       wrap.innerHTML = `
         <div class="output">
           <div class="body typed" id="prompt-body"></div>
           ${needsTimer ? '<div id="prompt-timer" class="led-timer hidden">00:30</div>' : ''}
           <div class="btn-row">
-            <button id="flow-btn" class="secondary" disabled>Continue</button>
+            <button id="flow-btn" class="secondary" disabled>${continueLabel}</button>
           </div>
         </div>
       `
@@ -379,6 +667,11 @@
       typeInterval = setInterval(() => {
         el.textContent = text.slice(0, idx + 1)
         idx += 1
+        // keep active card in view as text grows
+        const activeCard = document.getElementById('current-item')
+        if (activeCard && idx % 10 === 0) {
+          activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }
         if (idx >= text.length) clearInterval(typeInterval)
       }, 45)
     }
@@ -406,6 +699,729 @@
       el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
 
+    function parsePDPGoals(content) {
+      const goals = []
+      const lines = content.split('\n')
+      let currentGoal = null
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        const goalMatch = line.match(/^GOAL (\d+)\s*\[([^\]]+)\]:\s*(.+)$/)
+        if (goalMatch) {
+          currentGoal = {
+            number: parseInt(goalMatch[1]),
+            category: goalMatch[2],
+            goal: goalMatch[3],
+            milestone: '',
+            habit: ''
+          }
+          goals.push(currentGoal)
+        } else if (currentGoal) {
+          const milestoneMatch = line.match(/^Monthly Milestone:\s*(.+)$/)
+          const habitMatch = line.match(/^Daily Habit:\s*(.+)$/)
+          if (milestoneMatch) currentGoal.milestone = milestoneMatch[1]
+          if (habitMatch) currentGoal.habit = habitMatch[1]
+        }
+      }
+      
+      return goals
+    }
+
+    function renderPromptChoice(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="body typed" id="prompt-body"></div>
+          <div class="btn-row">
+            <button id="yes-btn" class="secondary">Yes, let's do it</button>
+            <button id="no-btn">Not now</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const yesBtn = document.getElementById('yes-btn')
+      const noBtn = document.getElementById('no-btn')
+      typeOut(item.body, document.getElementById('prompt-body'))
+      yesBtn.classList.add('armed')
+      noBtn.classList.add('armed')
+      yesBtn.addEventListener('click', () => {
+        archiveCurrentItem()
+        currentItemIndex += 1 // go to reflection-session
+        renderCurrentItem()
+      })
+      noBtn.addEventListener('click', () => {
+        archiveCurrentItem()
+        currentItemIndex += 2 // skip reflection-session, go to close-session
+        renderCurrentItem()
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderReflectionSession(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">3-Minute Reflection</div>
+          <div class="body" style="margin-bottom: 10px;">${item.question}</div>
+          <div class="muted" style="margin-bottom: 8px;">Take these 3 minutes to think deeply. Jot any notes you want to save.</div>
+          <div id="prompt-timer" class="led-timer">03:00</div>
+          <textarea id="reflection-notes" placeholder="Optional notes to save with this reflection" style="min-height: 120px; margin-top: 12px;"></textarea>
+          <div class="btn-row">
+            <button id="save-reflection-btn" class="secondary" disabled>Save Reflection</button>
+          </div>
+          <div class="status muted" id="reflection-status"></div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const saveBtn = document.getElementById('save-reflection-btn')
+      const notesEl = document.getElementById('reflection-notes')
+      const statusEl = document.getElementById('reflection-status')
+      scrollActiveIntoView(wrap)
+
+      startCountdown(180)
+      setTimeout(() => {
+        saveBtn.disabled = false
+        saveBtn.classList.add('armed')
+      }, 5000)
+
+      notesEl.addEventListener('focus', () => {
+        setTimeout(() => notesEl.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+      })
+
+      saveBtn.addEventListener('click', () => {
+        const notes = notesEl.value.trim()
+        handleReflectionSave(item.question, notes, saveBtn, statusEl)
+      })
+    }
+
+    async function handleReflectionSave(question, notes, saveBtn, statusEl) {
+      if (!person) return
+      saveBtn.disabled = true
+      statusEl.textContent = 'Saving reflection...'
+      const content = `REFLECTION QUESTION:\n${question}\n\nNOTES:\n${notes || '(no notes entered)'}`
+      try {
+        const { error } = await supabase
+          .from('journals')
+          .insert([{ person_id: person.person_id, content, journal_type: 'REFLECTION' }])
+        if (error) throw error
+        statusEl.textContent = 'Reflection saved. Nice work taking the time to think deeply.'
+        setTimeout(() => {
+          archiveCurrentItem()
+          currentItemIndex += 1
+          renderCurrentItem()
+        }, 1200)
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + (err.message || 'Save failed')
+        saveBtn.disabled = false
+      }
+    }
+
+    function renderGoalRating(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      
+      // Get encouragement from previous rating if this isn't the first goal
+      let bodyText = ''
+      if (item.goalNumber > 1 && window.pdpRatings) {
+        const previousRating = window.pdpRatings[`goal${item.goalNumber - 1}`]
+        const encouragement = getEncouragementMessage(firstName, previousRating)
+        bodyText = encouragement + '\n\n'
+      }
+      bodyText += `${item.goalText}\n(your ${item.category.toLowerCase()} goal)`
+      
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="body" style="margin-bottom: 12px; white-space: pre-line;">${bodyText}</div>
+          <div class="muted" style="margin-bottom: 12px;">${firstName}, how are you doing with this goal?</div>
+          <div id="rating-buttons" style="display: flex; gap: 10px; justify-content: center;">
+            <button class="rating-btn" data-rating="1" style="background: #dc2626; border: 2px solid #991b1b;">😔 1</button>
+            <button class="rating-btn" data-rating="2" style="background: #ea580c; border: 2px solid #c2410c;">😐 2</button>
+            <button class="rating-btn" data-rating="3" style="background: #ca8a04; border: 2px solid #a16207;">🙂 3</button>
+            <button class="rating-btn" data-rating="4" style="background: #16a34a; border: 2px solid #15803d;">😊 4</button>
+            <button class="rating-btn" data-rating="5" style="background: #0891b2; border: 2px solid #0e7490;">🚀 5</button>
+          </div>
+          <div class="terminal-hint" style="text-align: center; margin-top: 8px;">1 = Struggling · 5 = Crushing it</div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      
+      const ratingButtons = wrap.querySelectorAll('.rating-btn')
+      ratingButtons.forEach(btn => {
+        btn.style.minWidth = '70px'
+        btn.style.fontSize = '16px'
+        btn.style.fontWeight = '700'
+        btn.style.color = '#fff'
+        btn.addEventListener('mouseenter', () => {
+          btn.style.transform = 'scale(1.05)'
+        })
+        btn.addEventListener('mouseleave', () => {
+          btn.style.transform = 'scale(1)'
+        })
+        btn.addEventListener('click', () => {
+          const rating = parseInt(btn.dataset.rating)
+          // Store rating for encouragement
+          if (!window.pdpRatings) window.pdpRatings = {}
+          window.pdpRatings[`goal${item.goalNumber}`] = rating
+          archiveCurrentItem()
+          currentItemIndex += 1
+          renderCurrentItem()
+        })
+      })
+      scrollActiveIntoView(wrap)
+    }
+    
+    function getEncouragementMessage(firstName, rating) {
+      const messages = {
+        1: [
+          `${firstName}, I hear you—sometimes goals hit us harder than we expect. But you know what? Showing up even when it's tough? That's where real character is built. Let's keep going.`,
+          `Listen ${firstName}, a 1 doesn't mean failure. It means you're being real about where you are. That honesty is the first step to turning things around. You've got this.`,
+          `${firstName}, tough stretch huh? Growth isn't always smooth. The fact you're still checking in means you haven't quit. That persistence matters more than you think.`
+        ],
+        2: [
+          `${firstName}, a 2 shows resilience. You're in the trenches doing the work even when results aren't obvious yet. That's exactly how breakthroughs happen. Keep pushing.`,
+          `I see you, ${firstName}. A 2 means you're fighting through resistance. Those small efforts you're making? They're adding up, even if you can't see it yet.`,
+          `${firstName}, steady progress beats perfection every time. You're building something real here, one day at a time. Trust the process.`
+        ],
+        3: [
+          `Nice work, ${firstName}! A 3 is right where most meaningful change happens. You're consistent, and that's the foundation everything else builds on.`,
+          `${firstName}, solid middle ground! You're making it happen without burning out. That balance? It's actually pretty wise.`,
+          `Good momentum, ${firstName}. A 3 means you're showing up regularly, and consistency always wins in the long run. You're on the right track.`
+        ],
+        4: [
+          `${firstName}, that's what I'm talking about! A 4 shows real traction. Whatever adjustments you made are working. Keep this energy flowing!`,
+          `Wow ${firstName}, you're really dialed in on this one! A 4 is no joke—you're doing the work and it shows. Stay locked in!`,
+          `Strong showing, ${firstName}! A 4 means you've found your rhythm. This is the kind of consistency that leads to major wins.`
+        ],
+        5: [
+          `${firstName}, you're absolutely crushing this goal! 🔥 A 5 is elite. This is what commitment looks like. Keep inspiring us!`,
+          `Incredible, ${firstName}! A 5 means you're operating at peak performance here. This is the standard—keep raising the bar!`,
+          `${firstName}, you're on fire with this one! 🚀 A 5 is masterclass level. Whatever you're doing, bottle it up because it's working beautifully!`
+        ]
+      }
+      
+      const options = messages[rating] || messages[3]
+      return options[Math.floor(Math.random() * options.length)]
+    }
+
+    function renderGoalReflection(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">Reflect on Goal #${item.goalNumber}: ${item.category}</div>
+          <div class="body" style="margin-bottom: 12px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+            <strong>Your Goal:</strong> ${item.goalText}<br>
+            <strong>Your Milestone:</strong> ${item.milestone}<br>
+            <strong>Your Habit:</strong> ${item.habit}
+          </div>
+          <div class="muted" style="margin-bottom: 12px;">${firstName}, take 2 minutes to really think about this goal. What went well? What was harder than you expected? Did you hit your milestone? How did this goal impact your growth? Be honest with yourself.</div>
+          <div id="prompt-timer" class="led-timer">02:00</div>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary" disabled>Continue</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.addEventListener('click', () => handlePromptContinue())
+      scrollActiveIntoView(wrap)
+      
+      startCountdown(120)
+      flowBtn.disabled = true
+      setTimeout(() => {
+        flowBtn.disabled = false
+        flowBtn.classList.add('armed')
+      }, 5000)
+    }
+
+    function renderGoalAdjustmentInput(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">Adjust Your ${item.category} Goal</div>
+          <div class="muted" style="margin-bottom: 8px;">Your current goal: ${item.currentGoal}</div>
+          <label for="goal-adjustment">${firstName}, based on your reflection, do you want to keep this goal or adjust your approach?</label>
+          <textarea id="goal-adjustment" placeholder="Keep as-is, or enter your adjusted goal and strategy..." style="min-height: 100px;"></textarea>
+          <div class="terminal-hint">You can keep it the same if it's still relevant, or tweak it based on what you learned.</div>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Next</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const adjustmentInput = document.getElementById('goal-adjustment')
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      adjustmentInput.value = item.currentGoal
+      adjustmentInput.addEventListener('focus', () => {
+        setTimeout(() => adjustmentInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+      })
+      flowBtn.addEventListener('click', () => {
+        const adjustment = adjustmentInput.value.trim()
+        pdpGoals[`goal${item.goalNumber}`].goal = adjustment || item.currentGoal
+        pdpGoals[`goal${item.goalNumber}`].category = item.category
+        archiveCurrentItem()
+        currentItemIndex += 1
+        renderCurrentItem()
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderNewMilestoneInput(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">Set Your Next Milestone</div>
+          <div class="muted" style="margin-bottom: 8px;">${firstName}, what's one specific milestone you can reach in the next 30 days? Make it something you can measure so you'll know if you hit it.</div>
+          <textarea id="milestone-input" placeholder="What measurable progress will you make this month?" style="min-height: 80px;"></textarea>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Next</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const milestoneInput = document.getElementById('milestone-input')
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      milestoneInput.addEventListener('focus', () => {
+        setTimeout(() => milestoneInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+      })
+      flowBtn.addEventListener('click', () => {
+        const milestone = milestoneInput.value.trim()
+        if (!milestone) return
+        pdpGoals[`goal${item.goalNumber}`].milestone = milestone
+        archiveCurrentItem()
+        currentItemIndex += 1
+        renderCurrentItem()
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderAccountabilityUpdateInput(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">Update Your Accountability Plan</div>
+          <div class="muted" style="margin-bottom: 8px;">Your current plan: ${item.currentAccountability}</div>
+          <div class="muted" style="margin-bottom: 8px;">${firstName}, how did your accountability work out last month? Is the same plan working for you, or do you need to adjust who you're checking in with or how you're tracking progress?</div>
+          <textarea id="accountability-input" placeholder="Any changes to your accountability plan?" style="min-height: 100px;"></textarea>
+          <div class="terminal-hint">Keep what's working, change what isn't.</div>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Review My Updated PDP</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const accountabilityInput = document.getElementById('accountability-input')
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      accountabilityInput.value = item.currentAccountability
+      accountabilityInput.addEventListener('focus', () => {
+        setTimeout(() => accountabilityInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+      })
+      flowBtn.addEventListener('click', () => {
+        const accountability = accountabilityInput.value.trim()
+        if (!accountability) return
+        pdpGoals.accountability = accountability
+        archiveCurrentItem()
+        currentItemIndex += 1
+        renderCurrentItem()
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderCloseSession(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="body">${item.body}</div>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Close</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      flowBtn.addEventListener('click', () => {
+        // End session - show completion message
+        archiveCurrentItem()
+        const finalWrap = document.createElement('div')
+        finalWrap.className = 'prompt past'
+        finalWrap.innerHTML = `
+          <div class="output">
+            <div class="body">Session closed. Keep up the great work, ${firstName}! 💪</div>
+          </div>
+        `
+        promptHistory.appendChild(finalWrap)
+        currentPromptContainer.innerHTML = ''
+        promptHistory.scrollTop = promptHistory.scrollHeight
+        clearSession()
+        setTimeout(() => { window.location.href = 'index.html' }, 1200)
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderReminder(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">${item.title}</div>
+          <div class="body" style="white-space: pre-line; margin-top: 12px;">${item.content}</div>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Close</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      flowBtn.addEventListener('click', () => {
+        // End session - show completion message
+        wrap.innerHTML = `
+          <div class="output">
+            <div class="body">Keep working on your goals! See you at your next check-in. 🌟</div>
+          </div>
+        `
+        wrap.classList.remove('active')
+        wrap.classList.add('past')
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderReview(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">${item.title}</div>
+          <div class="muted" style="margin-bottom: 8px;">Review your progress on these goals:</div>
+          <div class="body" style="white-space: pre-line; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin: 8px 0;">${item.content}</div>
+          <div class="terminal-hint">Reflect on what worked, what didn't, and what you'd like to adjust for the next month.</div>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Continue to Update</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      flowBtn.addEventListener('click', () => handlePromptContinue())
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderCategorySelect(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const buttonsHtml = item.categories.map(cat => 
+        `<button class="category-btn" data-category="${cat}">${cat}</button>`
+      ).join('')
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">${item.title}</div>
+          <div class="muted" style="margin-bottom: 12px;">Choose the area of life this goal will focus on:</div>
+          <div id="category-buttons" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            ${buttonsHtml}
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      
+      const categoryButtons = wrap.querySelectorAll('.category-btn')
+      categoryButtons.forEach(btn => {
+        btn.classList.add('secondary')
+        btn.style.flex = '1 1 auto'
+        btn.style.minWidth = '120px'
+        btn.style.padding = '10px 14px'
+        btn.style.fontSize = '15px'
+        btn.addEventListener('click', () => {
+          const category = btn.dataset.category
+          pdpGoals[`goal${item.goalNumber}`].category = category
+          archiveCurrentItem()
+          currentItemIndex += 1
+          renderCurrentItem()
+        })
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderGoalInput(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const category = pdpGoals[`goal${item.goalNumber}`].category
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">${item.title} - ${category}</div>
+          <div class="muted" style="margin-bottom: 12px;">Great choice, ${firstName}! What specific goal do you want to set in the area of ${category}? Be as clear and measurable as possible.</div>
+          <textarea id="goal-input" placeholder="${item.placeholder}" style="min-height: 100px;"></textarea>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Next</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const goalInput = document.getElementById('goal-input')
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      goalInput.addEventListener('focus', () => {
+        setTimeout(() => goalInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+      })
+      flowBtn.addEventListener('click', () => {
+        const goal = goalInput.value.trim()
+        if (!goal) return
+        pdpGoals[`goal${item.goalNumber}`].goal = goal
+        archiveCurrentItem()
+        currentItemIndex += 1
+        renderCurrentItem()
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderMilestoneInput(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">${item.title}</div>
+          <div class="muted" style="margin-bottom: 8px;">Your Goal: ${pdpGoals[`goal${item.goalNumber}`].goal}</div>
+          <div class="muted" style="margin-bottom: 8px;">Now ${firstName}, what's one measurable milestone you can hit by the end of this month? This will help you track if you're making real progress.</div>
+          <textarea id="milestone-input" placeholder="${item.placeholder}" style="min-height: 80px;"></textarea>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Next</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const milestoneInput = document.getElementById('milestone-input')
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      milestoneInput.addEventListener('focus', () => {
+        setTimeout(() => milestoneInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+      })
+      flowBtn.addEventListener('click', () => {
+        const milestone = milestoneInput.value.trim()
+        if (!milestone) return
+        pdpGoals[`goal${item.goalNumber}`].milestone = milestone
+        archiveCurrentItem()
+        currentItemIndex += 1
+        renderCurrentItem()
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderHabitInput(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">${item.title}</div>
+          <div class="muted" style="margin-bottom: 8px;">Your Goal: ${pdpGoals[`goal${item.goalNumber}`].goal}</div>
+          <div class="muted" style="margin-bottom: 8px;">What's one small action you can do every single day that will move you closer to this goal? Consistency is key!</div>
+          <textarea id="habit-input" placeholder="${item.placeholder}" style="min-height: 80px;"></textarea>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Next</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const habitInput = document.getElementById('habit-input')
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      habitInput.addEventListener('focus', () => {
+        setTimeout(() => habitInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+      })
+      flowBtn.addEventListener('click', () => {
+        const habit = habitInput.value.trim()
+        if (!habit) return
+        pdpGoals[`goal${item.goalNumber}`].habit = habit
+        archiveCurrentItem()
+        currentItemIndex += 1
+        renderCurrentItem()
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderAccountabilityInput(item) {
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">${item.title}</div>
+          <div class="muted" style="margin-bottom: 12px;">${firstName}, who's going to help keep you on track? Research shows we're way more likely to stick with our goals when someone else knows about them. Who will you share these goals with, and how will you track your progress?</div>
+          <textarea id="accountability-input" placeholder="${item.placeholder}" style="min-height: 100px;"></textarea>
+          <div class="btn-row">
+            <button id="flow-btn" class="secondary">Review My PDP</button>
+          </div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const accountabilityInput = document.getElementById('accountability-input')
+      const flowBtn = document.getElementById('flow-btn')
+      flowBtn.classList.add('armed')
+      accountabilityInput.addEventListener('focus', () => {
+        setTimeout(() => accountabilityInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+      })
+      flowBtn.addEventListener('click', () => {
+        const accountability = accountabilityInput.value.trim()
+        if (!accountability) return
+        pdpGoals.accountability = accountability
+        archiveCurrentItem()
+        currentItemIndex += 1
+        renderCurrentItem()
+      })
+      scrollActiveIntoView(wrap)
+    }
+
+    function renderReviewAndSave(item) {
+      const formattedPDP = formatPDPContent()
+      const wrap = document.createElement('div')
+      wrap.className = 'prompt active'
+      wrap.id = 'current-item'
+      const firstName = person?.name?.split(' ')[0] || 'friend'
+      
+      // Create beautiful HTML review
+      let reviewHtml = `
+        <div style="background: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(34,197,94,0.08)); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin: 12px 0;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 4px;">${person?.name || 'Unknown'}</div>
+            <div style="font-size: 13px; color: var(--muted);">${person?.email || ''}</div>
+          </div>
+      `
+      
+      for (let i = 1; i <= 3; i++) {
+        const goal = pdpGoals[`goal${i}`]
+        reviewHtml += `
+          <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 10px; margin-bottom: 14px; border-left: 3px solid ${i === 1 ? '#22d3ee' : i === 2 ? '#a78bfa' : '#22c55e'};">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <div style="background: ${i === 1 ? '#22d3ee' : i === 2 ? '#a78bfa' : '#22c55e'}; color: #0f172a; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">GOAL ${i}</div>
+              <div style="background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; font-size: 12px; color: var(--muted);">${goal.category}</div>
+            </div>
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px; line-height: 1.4;">${goal.goal}</div>
+            <div style="font-size: 14px; color: var(--muted); margin-bottom: 6px;">
+              <span style="color: var(--accent-2); font-weight: 600;">📅 Monthly Milestone:</span> ${goal.milestone}
+            </div>
+            <div style="font-size: 14px; color: var(--muted);">
+              <span style="color: var(--accent); font-weight: 600;">🔄 Daily Habit:</span> ${goal.habit}
+            </div>
+          </div>
+        `
+      }
+      
+      reviewHtml += `
+          <div style="background: rgba(34,211,238,0.08); padding: 16px; border-radius: 10px; margin-top: 16px; border: 1px dashed rgba(34,211,238,0.3);">
+            <div style="font-weight: 700; margin-bottom: 8px; color: var(--accent);">🤝 Accountability Plan</div>
+            <div style="font-size: 14px; line-height: 1.6;">${pdpGoals.accountability}</div>
+          </div>
+        </div>
+      `
+      
+      wrap.innerHTML = `
+        <div class="output">
+          <div class="title">Review Your PDP</div>
+          <div class="muted" style="margin-bottom: 12px;">Looking good, ${firstName}! Here's your complete Personal Development Plan. Take a moment to review it, then we'll save it.</div>
+          ${reviewHtml}
+          <div class="btn-row">
+            <button id="save-btn" class="secondary">Save My PDP</button>
+          </div>
+          <div class="status muted" id="save-status"></div>
+        </div>
+      `
+      currentPromptContainer.innerHTML = ''
+      currentPromptContainer.appendChild(wrap)
+      const saveBtn = document.getElementById('save-btn')
+      const saveStatus = document.getElementById('save-status')
+      saveBtn.classList.add('armed')
+      saveBtn.addEventListener('click', () => handleStructuredSave(formattedPDP, saveBtn, saveStatus))
+      scrollActiveIntoView(wrap)
+    }
+
+    function formatPDPContent() {
+      let content = '=== MY PERSONAL DEVELOPMENT PLAN ===\n\n'
+      for (let i = 1; i <= 3; i++) {
+        const goal = pdpGoals[`goal${i}`]
+        content += `GOAL ${i} [${goal.category}]: ${goal.goal}\n`
+        content += `Monthly Milestone: ${goal.milestone}\n`
+        content += `Daily Habit: ${goal.habit}\n\n`
+      }
+      content += `ACCOUNTABILITY PLAN:\n${pdpGoals.accountability}`
+      return content
+    }
+
+    async function handleStructuredSave(content, saveBtn, saveStatus) {
+      if (!person) return
+      saveBtn.disabled = true
+      saveStatus.textContent = 'Saving...'
+      try {
+        const { error } = await supabase
+          .from('journals')
+          .insert([{ person_id: person.person_id, content, journal_type: 'PDP' }])
+        if (error) throw error
+        existingPdp = { person_id: person.person_id, content, journal_type: 'PDP', created_at: new Date().toISOString() }
+        const actionText = currentItemIndex > 5 ? 'updated' : 'created'
+        saveStatus.textContent = `PDP ${actionText} successfully! 🎉`
+        setTimeout(() => {
+          const wrap = document.getElementById('current-item')
+          wrap.innerHTML = `
+            <div class="output">
+              <div class="body">Your PDP has been saved. Stay committed to your goals! 🌟</div>
+            </div>
+          `
+          wrap.classList.remove('active')
+          wrap.classList.add('past')
+        }, 2000)
+      } catch (err) {
+        saveStatus.textContent = 'Error: ' + (err.message || 'Save failed')
+      } finally {
+        saveBtn.disabled = false
+      }
+    }
+
     function renderEditor(item) {
       const wrap = document.createElement('div')
       wrap.className = 'prompt active'
@@ -428,6 +1444,10 @@
       const saveBtn = document.getElementById('save-btn')
       const saveStatus = document.getElementById('save-status')
       pdpContent.value = existingPdp?.content || ''
+      // mobile keyboard handling
+      pdpContent.addEventListener('focus', () => {
+        setTimeout(() => pdpContent.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+      })
       saveBtn.addEventListener('click', () => handleSave(pdpContent, saveBtn, saveStatus))
       scrollActiveIntoView(wrap)
     }
@@ -465,7 +1485,48 @@
       }
     }
 
-    renderCurrentItem()
+    // Auto-login if session exists
+    async function autoLogin() {
+      const savedPerson = loadSession()
+      if (savedPerson) {
+        person = savedPerson
+        updateTerminalMeta()
+        
+        // Show loading message
+        const wrap = document.createElement('div')
+        wrap.className = 'prompt active'
+        wrap.id = 'current-item'
+        wrap.innerHTML = `
+          <div class="output">
+            <div class="title">Welcome back, ${person.name?.split(' ')[0] || 'friend'}!</div>
+            <div class="body">Loading your PDP...</div>
+          </div>
+        `
+        currentPromptContainer.innerHTML = ''
+        currentPromptContainer.appendChild(wrap)
+        
+        try {
+          await loadExistingPdp()
+          flowItems = getFlowItems(!!existingPdp, existingPdp)
+          archiveCurrentItem()
+          currentItemIndex += 1
+          renderCurrentItem()
+        } catch (err) {
+          // If loading fails, clear session and show login
+          clearSession()
+          person = null
+          updateTerminalMeta()
+          currentPromptContainer.innerHTML = ''
+          flowItems = getFlowItems(false)
+          renderCurrentItem()
+        }
+      } else {
+        renderCurrentItem()
+      }
+    }
+
+    // Initialize
+    autoLogin()
   </script>
 </body>
 </html>
