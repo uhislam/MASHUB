@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+	<title>Activity Leaderboard</title>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="styles.css">
+	<style>
+		/* Test: Dark night texture overlay */
+		body {
+			background-image: url('Assets/darknight.jpg');
+      background-size: 100vw;
+			background-repeat: repeat;
+			background-blend-mode: overlay;
+		}
+
+		/* Activity Hover Card */
+		.square {
+			position: relative;
+		}
+
+		.activity-hover-card {
+			position: absolute;
+			top: 100%;
+			left: 50%;
+			transform: translateX(-50%);
+			margin-top: 8px;
+			padding: 12px 16px;
+			background: rgba(15, 23, 42, 0.98);
+			border: 2px solid rgba(0, 229, 255, 0.5);
+			border-radius: 8px;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 229, 255, 0.2);
+			z-index: 1000;
+			min-width: 150px;
+			pointer-events: none;
+			opacity: 0;
+			transition: opacity 0.2s ease, transform 0.2s ease;
+			white-space: nowrap;
+		}
+
+		.square:hover .activity-hover-card {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+		}
+
+		.hover-pill {
+			font-family: 'Press Start 2P', cursive;
+			font-size: 10px;
+			padding: 6px 12px;
+			background: rgba(0, 229, 255, 0.2);
+			border: 1px solid rgba(0, 229, 255, 0.5);
+			border-radius: 4px;
+			color: #00e5ff;
+			text-align: center;
+			margin-bottom: 8px;
+			text-transform: uppercase;
+		}
+
+		.hover-dates {
+			color: #94a3b8;
+			font-size: 12px;
+			line-height: 1.6;
+			text-align: center;
+		}
+
+		.header-icon {
+			max-width: 100px;
+			height: auto;
+			margin-bottom: 15px;
+		}
+	</style>
+	<script type="module">
+		import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+		window.supabaseCreateClient = createClient;
+	</script>
+</head>
+<body>
+	<div class="container">
+		<header>
+			<img src="Assets/trophy.png" alt="Trophy" class="header-icon">
+			<h1>Leaderboard</h1>
+		</header>
+
+		<div class="card">
+      <div class="legend" aria-label="Activity legend">
+				<span class="legend-item"><span class="legend-square square-khaterah"></span> Give a khaterah or khutbah</span>
+				<span class="legend-item"><span class="legend-square square-dawah"></span> Dawah Table</span>
+				<span class="legend-item"><span class="legend-square square-service"></span> Service event</span>
+				<span class="legend-item"><span class="legend-square square-retreat"></span> Tarbiya Retreat</span>
+				<span class="legend-item"><span class="legend-square square-iftaar"></span>  Iftaar on campus</span>
+			</div>
+		<div id="status" class="loading">Loading data…</div>
+			<div class="table-wrapper">
+				<table id="leaderboard" aria-label="Activity leaderboard">
+					<thead>
+							<tr>
+								<th data-sort="baseRank"><span class="sort-label"># <span class="sort-arrow">⇅</span></span></th>
+								<th data-sort="name"><span class="sort-label">Name <span class="sort-arrow">⇅</span></span></th>
+								<th data-sort="activism"><span class="sort-label">Activism <span class="sort-arrow">⇅</span></span></th>
+								<th data-sort="hasPdp"><span class="sort-label">PDP <span class="sort-arrow">⇅</span></span></th>
+								<th data-sort="streak"><span class="sort-label">Streak <span class="sort-arrow">⇅</span></span></th>
+								<th data-sort="points"><span class="sort-label">Points <span class="sort-arrow">⇅</span></span></th>
+							</tr>
+						</thead>
+				<tbody id="leaderboard-body"></tbody>
+			</table>
+		</div>
+	</div>
+
+	<footer class="site-footer">
+		<div class="footer-content">
+			<div class="actions-row" aria-label="Quick actions">
+				<a class="pixel-button" href="index.html">About Tarbiya</a>
+				<a class="pixel-button" href="log.html">Log Activity</a>
+				<a class="pixel-button" href="pdp.html">PDP</a>
+			</div>
+			<div class="footer-brand" aria-label="Organization branding">
+				<!-- <img src="Asset 4leaf.png" alt="MASHUB logo"> -->
+				<p>&copy; 2025 Muslim American Society Houston. All rights reserved.</p>
+			</div>
+		</div>
+	</footer>
+	<script type="module">
+	import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+	const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+	const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
+	const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+		const ACTIVITY_TYPES = ['Khaterah','Dawah','Service','Retreat','Iftaar'];
+
+		// Fallback sample data (very small) for offline/first load
+		const SAMPLE = {
+			people: [
+				{ person_id: 'p1', name: 'Aisha Rahman', usrah_id: 'u1' },
+				{ person_id: 'p2', name: 'Fatimah Khan', usrah_id: 'u1' },
+				{ person_id: 'p3', name: 'Yusuf Malik', usrah_id: 'u2' }
+			],
+			usrah: [
+				{ usrah_id: 'u1', usrah_name: 'North River' },
+				{ usrah_id: 'u2', usrah_name: 'East Grove' }
+			],
+			activities: [
+				{ person_id: 'p1', activity_type: 'Khaterah' },
+				{ person_id: 'p1', activity_type: 'Service' },
+				{ person_id: 'p2', activity_type: 'Dawah' }
+			],
+			attendance: [
+				{ attendee_ids: ['p1','p2'], attendance_date: '2025-03-01', usrah_id: 'u1' }
+			],
+			journals: []
+		};
+
+		function normalizeType(t) {
+			return (t || '').toLowerCase();
+		}
+
+		function formatCount(n) {
+			const val = Number.isFinite(n) ? n : 0;
+			return `<span class="count">${val}</span>`;
+		}
+
+		function badgeFor(type, count) {
+			const cls = {
+				Khaterah: 'badge-khaterah',
+				Dawah: 'badge-dawah',
+				Service: 'badge-service',
+				Retreat: 'badge-retreat',
+				Iftaar: 'badge-iftaar',
+				PDP: 'badge-pdp'
+			}[type] || 'badge-ghost';
+			const label = type;
+			const countSpan = typeof count === 'number' ? `<span class="count-dot">${count}</span>` : '';
+			return `<span class="badge-tile ${cls}">${label}${countSpan}</span>`;
+		}
+
+		function streakCell(n, cls) {
+			const val = Number.isFinite(n) ? n : 0;
+			const level = cls || 'streak-low';
+			return `<span class="streak-pill ${level}"><span class="streak-icon"></span>${val}-week</span>`;
+		}
+
+		function startOfWeekUTC(date) {
+			const d = new Date(date);
+			if (Number.isNaN(d)) return null;
+			d.setUTCHours(0, 0, 0, 0);
+			const diff = d.getUTCDay(); // 0 = Sunday, week starts on Sunday
+			d.setUTCDate(d.getUTCDate() - diff);
+			return d;
+		}
+
+		function streakFromDates(dates) {
+			if (!dates || !dates.length) return 0;
+			
+			// Get unique week starts as timestamps
+			const weeks = new Set();
+			dates.forEach(ds => {
+				const wk = startOfWeekUTC(ds);
+				if (wk) weeks.add(wk.getTime());
+			});
+			
+			if (weeks.size === 0) return 0;
+			if (weeks.size === 1) return 1;
+			
+			// Sort weeks chronologically
+			const sortedWeeks = Array.from(weeks).sort((a, b) => a - b);
+			
+			// Find longest consecutive streak
+			let maxStreak = 1;
+			let currentStreak = 1;
+			const weekMs = 7 * 24 * 60 * 60 * 1000; // Milliseconds in a week
+			
+			for (let i = 1; i < sortedWeeks.length; i++) {
+				const diff = sortedWeeks[i] - sortedWeeks[i - 1];
+				// Check if exactly 1 week apart (allowing 1% tolerance for floating point)
+				if (Math.abs(diff - weekMs) < weekMs * 0.01) {
+					currentStreak++;
+				} else {
+					maxStreak = Math.max(maxStreak, currentStreak);
+					currentStreak = 1;
+				}
+			}
+			
+			maxStreak = Math.max(maxStreak, currentStreak);
+			return maxStreak;
+		}
+
+		function applyRowTint(value, min, max) {
+			return '';
+		}
+
+		function renderRows(rows, usrahById, sortKey, sortDir) {
+			const body = document.getElementById('leaderboard-body');
+			const numericKeys = ['streak','activism','points','rank','baseRank','actKhaterah','actDawah','actService','actRetreat','actIftaar','hasPdp'];
+			let min, max;
+			if (numericKeys.includes(sortKey)) {
+				const vals = rows.map(r => r[sortKey]).filter(v => typeof v === 'number');
+				if (vals.length) { min = Math.min(...vals); max = Math.max(...vals); }
+			}
+
+			body.innerHTML = rows.map(row => {
+				const rowStyle = numericKeys.includes(sortKey) ? applyRowTint(row[sortKey], min, max) : '';
+				const rankVal = row.baseRank ?? row.rank ?? '';
+				const rankClass = rankVal === 1 ? 'gold' : rankVal === 2 ? 'silver' : rankVal === 3 ? 'bronze' : '';
+				const pointsLabel = Number.isFinite(row.points) ? row.points.toLocaleString() : (row.points || '0');
+
+				const activismSquares = ACTIVITY_TYPES
+					.map(type => {
+						const filled = (row.activities[type] || 0) > 0;
+						const extra = filled ? ' filled' : ' dim';
+						const details = row.activityData[type] || [];
+						
+						// Build hover card HTML
+						let hoverCardHTML = '';
+						if (details.length > 0) {
+							const entries = details.map(a => {
+								const dateStr = a.activity_date || a.created_at;
+								if (!dateStr) return '';
+								const d = new Date(dateStr);
+								const formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+								
+								// Extract notes and witness
+								let notes = a.notes || '';
+								let witness = '';
+								
+								// Check if notes contain witness
+								const witnessMatch = notes.match(/\n\nWitness: (.+)$/s);
+								if (witnessMatch) {
+									witness = witnessMatch[1].trim();
+									notes = notes.substring(0, witnessMatch.index).trim();
+								}
+								
+								// Truncate notes to 150 characters
+								if (notes.length > 150) {
+									notes = notes.substring(0, 150) + '...';
+								}
+								
+								return `<strong>${formattedDate}</strong><br>${notes}${witness ? '<br><em>Witness: ' + witness + '</em>' : ''}`;
+							}).filter(Boolean);
+							
+							hoverCardHTML = `
+								<div class="activity-hover-card">
+									<div class="hover-pill">${type}</div>
+									<div class="hover-dates">${entries.join('<br><br>')}</div>
+								</div>
+							`;
+						}
+						
+						return `<span class="square square-${normalizeType(type)}${extra}">${hoverCardHTML}</span>`;
+					});
+				const streakClass = row.streak >= 4 ? 'streak-high' : row.streak >= 2 ? 'streak-mid' : 'streak-low';
+
+				const pdpDisplay = row.hasPdp === 2
+					? '<span style="font-size: 20px;">😊</span>'
+					: (row.hasPdp === 1 ? '<span style="font-size: 20px;">😐</span>' : '<span style="font-size: 20px;">☹</span>');
+
+				return `
+					<tr ${rowStyle}>
+						<td data-col="rank"><span class="rank-text ${rankClass}">${rankVal || '—'}</span></td>
+						<td class="name">${row.name}</td>
+						<td><span class="activism-squares">${activismSquares.join('')}</span></td>
+						<td data-col="pdp">${pdpDisplay}</td>
+						<td>${streakCell(row.streak, streakClass)}</td>
+						<td><span class="points-text">${pointsLabel}</span></td>
+					</tr>
+				`;
+			}).join('');
+		}
+
+
+		function withFallback(value, fallback) {
+			return value && Array.isArray(value) && value.length ? value : fallback;
+		}
+
+		async function loadData() {
+			const statusEl = document.getElementById('status');
+			statusEl.textContent = 'Loading data…';
+
+			const since = new Date();
+			since.setDate(since.getDate() - 40);
+			const sinceIso = since.toISOString();
+
+			try {
+				const [peopleRes, usrahRes, activitiesRes, attendanceRes, journalsRes] = await Promise.all([
+					supabase.from('people').select('*'),
+					supabase.from('usrah').select('*'),
+					supabase.from('activities').select('*'),
+					supabase.from('attendance').select('*'),
+					supabase.from('journals').select('*').gte('created_at', sinceIso).in('journal_type', ['PDP','pdp','Pdp'])
+				]);
+
+				const errors = [peopleRes.error, usrahRes.error, activitiesRes.error, attendanceRes.error, journalsRes.error].filter(Boolean);
+				if (errors.length) throw errors[0];
+
+				return {
+					people: withFallback(peopleRes.data, SAMPLE.people),
+					usrah: withFallback(usrahRes.data, SAMPLE.usrah),
+					activities: withFallback(activitiesRes.data, SAMPLE.activities),
+					attendance: withFallback(attendanceRes.data, SAMPLE.attendance),
+					journals: withFallback(journalsRes.data, SAMPLE.journals)
+				};
+			} catch (err) {
+				console.warn('Supabase load failed, using fallback:', err.message);
+				statusEl.innerHTML = `<span class="error">Supabase unavailable, showing sample data.</span>`;
+				return SAMPLE;
+			}
+		}
+
+		function computeRows(data) {
+			const usrahById = new Map(data.usrah.map(u => [u.usrah_id, u]));
+			const activityCounts = new Map();
+			const activityDetails = new Map(); // Store full activity records
+			data.activities.forEach(a => {
+				const key = a.person_id;
+				const type = ACTIVITY_TYPES.find(t => normalizeType(t) === normalizeType(a.activity_type));
+				if (!type) return;
+				if (!activityCounts.has(key)) activityCounts.set(key, {});
+				if (!activityDetails.has(key)) activityDetails.set(key, {});
+				const bucket = activityCounts.get(key);
+				const detailBucket = activityDetails.get(key);
+				bucket[type] = (bucket[type] || 0) + 1;
+				if (!detailBucket[type]) detailBucket[type] = [];
+				detailBucket[type].push(a);
+			});
+
+			const latestPdpByPerson = new Map();
+			(data.journals || []).forEach(j => {
+				if (!j.person_id || !j.created_at) return;
+				const existing = latestPdpByPerson.get(j.person_id);
+				const curr = new Date(j.created_at).getTime();
+				if (!existing || curr > existing) latestPdpByPerson.set(j.person_id, curr);
+			});
+
+			const attendanceByPerson = new Map();
+			data.attendance.forEach(rec => {
+				(rec.attendee_ids || []).forEach(pid => {
+					if (!attendanceByPerson.has(pid)) attendanceByPerson.set(pid, []);
+					attendanceByPerson.get(pid).push(rec.attendance_date);
+				});
+			});
+
+			const rows = data.people.map(p => {
+				const activities = activityCounts.get(p.person_id) || {};
+				const activityData = activityDetails.get(p.person_id) || {};
+				const streak = streakFromDates(attendanceByPerson.get(p.person_id));
+
+				let hasPdp = 0;
+				const latest = latestPdpByPerson.get(p.person_id);
+				if (latest) {
+					const days = Math.floor((Date.now() - latest) / (1000 * 60 * 60 * 24));
+					hasPdp = days <= 25 ? 2 : (days <= 35 ? 1 : 0);
+				}
+
+				const activism = ACTIVITY_TYPES.reduce((sum, t) => sum + (activities[t] || 0), 0) + (hasPdp > 0 ? 1 : 0);
+				const points = (activism * 10) + (streak * 5);
+
+				return {
+					person_id: p.person_id,
+					name: p.name || '—',
+					usrah_id: p.usrah_id,
+					usrahName: usrahById.get(p.usrah_id)?.usrah_name || '',
+					activities,
+					activityData,
+					actKhaterah: activities['Khaterah'] || 0,
+					actDawah: activities['Dawah'] || 0,
+					actService: activities['Service'] || 0,
+					actRetreat: activities['Retreat'] || 0,
+					actIftaar: activities['Iftaar'] || 0,
+					hasPdp,
+					streak,
+					activism,
+					points
+				};
+			});
+
+			return { rows, usrahById };
+		}
+
+		function sortRows(rows, sortKey, sortDir) {
+			if (!sortKey || sortDir === 'none') return rows;
+			const dir = sortDir === 'desc' ? -1 : 1;
+			return [...rows].sort((a, b) => {
+				const av = a[sortKey];
+				const bv = b[sortKey];
+				if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+				const as = (av || '').toString().toLowerCase();
+				const bs = (bv || '').toString().toLowerCase();
+				return as.localeCompare(bs) * dir;
+			});
+		}
+
+		(async function init() {
+			const data = await loadData();
+			const { rows, usrahById } = computeRows(data);
+
+			// Base rank computed by points desc then streak then name
+			const ranked = [...rows].sort((a, b) => (b.points - a.points) || (b.streak - a.streak) || a.name.localeCompare(b.name));
+			ranked.forEach((r, idx) => { r.baseRank = idx + 1; });
+
+			let sortKey = 'points';
+			let sortDir = 'desc';
+
+			function update() {
+				const sorted = sortRows(rows, sortKey, sortDir);
+				renderRows(sorted, usrahById, sortKey, sortDir);
+				const statusEl = document.getElementById('status');
+				if (statusEl) {
+					statusEl.textContent = '';
+					statusEl.style.display = 'none';
+				}
+				document.querySelectorAll('th[data-sort]').forEach(th => {
+					const isActive = th.dataset.sort === sortKey && sortDir !== 'none';
+					th.classList.toggle('sort-active', isActive);
+					th.classList.toggle('sort-desc', isActive && sortDir === 'desc');
+					th.classList.toggle('sort-asc', isActive && sortDir === 'asc');
+					const arrow = th.querySelector('.sort-arrow');
+					if (!arrow) return;
+					if (!isActive) {
+						arrow.textContent = '⇅';
+					} else {
+						arrow.textContent = sortDir === 'desc' ? '↓' : '↑';
+					}
+				});
+			}
+
+			function cycleSort(key) {
+				if (sortKey !== key) {
+					sortKey = key;
+					sortDir = 'desc';
+				} else if (sortDir === 'desc') {
+					sortDir = 'asc';
+				} else if (sortDir === 'asc') {
+					sortDir = 'none';
+				} else {
+					sortDir = 'desc';
+				}
+				update();
+			}
+
+			document.querySelectorAll('th[data-sort]').forEach(th => {
+				th.addEventListener('click', () => cycleSort(th.dataset.sort));
+			});
+
+			update();
+		})();
+	</script>
+</body>
+</html>

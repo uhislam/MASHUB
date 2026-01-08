@@ -681,9 +681,19 @@
                     <input type="date" id="birthday" name="birthday" required>
                 </div>
 
+                
+
+                <!-- Gender -->
                 <div class="form-group">
-                    <label for="age">Age <span class="required">*</span></label>
-                    <input type="number" id="age" name="age" min="15" max="100" required>
+                    <label>Gender <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="gender" value="brother" required> Brother
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="gender" value="sister" required> Sister
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Preferences Section (moved up) -->
@@ -691,22 +701,8 @@
 
                 <p class="muted" style="margin-bottom:12px;">This helps us place you with the best-fit usra.</p>
 
-                <div class="form-group">
-                    <label for="localMasjid">Local Masjid <span class="required">*</span></label>
-                    <input type="text" id="localMasjid" name="localMasjid" placeholder="e.g., Masjid Al-Noor" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="classSchedule">Class Schedule</label>
-                    <textarea id="classSchedule" name="classSchedule" placeholder="Type your class schedule or upload below (optional)" rows="4"></textarea>
-                    <label class="upload-label" for="scheduleUpload" style="display:inline-flex; align-items:center; gap:8px; padding:10px 14px; background:#0f1b2f; border:1px solid rgba(148,163,184,0.3); border-radius:10px; cursor:pointer; margin-top:8px; color:#e2e8f0;">
-                        <span style="font-weight:600;">Upload schedule (optional)</span>
-                        <span style="font-size:12px; color:#94a3b8;">PDF, DOC, JPG, PNG</span>
-                    </label>
-                    <input type="file" id="scheduleUpload" name="scheduleUpload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;">
-                </div>
-
-                <div class="form-group">
+                <!-- Usra Preference first -->
+                <div class="form-group" id="usraPreferenceGroup">
                     <label>Usra Preference <span class="required">*</span></label>
                     <div class="radio-group">
                         <label class="radio-label">
@@ -717,6 +713,49 @@
                         </label>
                     </div>
                 </div>
+
+                <!-- On-campus options: timings + conditional schedule/upload when None selected -->
+                <div id="onCampusOptions" style="display:none;">
+                    <div class="form-group">
+                        <label>Which of the following timings work for you?</label>
+                        <div id="timings-brother" class="radio-group" style="display:none; margin-top:8px; flex-direction: column; gap: 8px;">
+                            <label class="radio-label"><input type="radio" name="campusTiming" value="A"> A</label>
+                            <label class="radio-label"><input type="radio" name="campusTiming" value="B"> B</label>
+                            <label class="radio-label"><input type="radio" name="campusTiming" value="C"> C</label>
+                            <label class="radio-label"><input type="radio" name="campusTiming" value="D"> D</label>
+                        </div>
+                        <div id="timings-sister" class="radio-group" style="display:none; margin-top:8px; flex-direction: column; gap: 8px;">
+                            <label class="radio-label"><input type="radio" name="campusTiming" value="E"> Tuesday 1-2pm</label>
+                            <label class="radio-label"><input type="radio" name="campusTiming" value="F"> Tuesday 4-5pm</label>
+                            <label class="radio-label"><input type="radio" name="campusTiming" value="G"> Wednesday 3-4pm</label>
+                            <label class="radio-label"><input type="radio" name="campusTiming" value="H"> Thursday 12-1pm</label>
+                        </div>
+                        <div class="radio-group" style="margin-top:8px;">
+                            <label class="radio-label"><input type="radio" name="campusTiming" value="none"> None of these work</label>
+                        </div>
+                    </div>
+
+                    <div id="onCampusSchedule" class="form-group" style="display:none;">
+                        <label for="classScheduleOn">Weekly Schedule</label>
+                        <textarea id="classScheduleOn" name="classScheduleOn" placeholder="Type your weekly schedule or upload below (optional)" rows="4"></textarea>
+                        <label class="upload-label" for="scheduleUpload" style="display:inline-flex; align-items:center; gap:8px; padding:10px 14px; background:#0f1b2f; border:1px solid rgba(148,163,184,0.3); border-radius:10px; cursor:pointer; margin-top:8px; color:#e2e8f0;">
+                            <span style="font-weight:600;">Upload schedule (optional)</span>
+                            <span style="font-size:12px; color:#94a3b8;">PDF, DOC, JPG, PNG</span>
+                        </label>
+                        <input type="file" id="scheduleUpload" name="scheduleUpload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;">
+                    </div>
+                </div>
+
+                <!-- Off-campus options: local masjid then weekly schedule (no upload) -->
+                <div id="offCampusSchedule" class="form-group" style="display:none;">
+                    <label for="localMasjidOff">Local Masjid <span class="required">*</span></label>
+                    <input type="text" id="localMasjidOff" name="localMasjidOff" placeholder="e.g., Masjid Al-Noor">
+                    <div style="height:12px"></div>
+                    <label for="classScheduleOff">Weekly Schedule</label>
+                    <textarea id="classScheduleOff" name="classScheduleOff" placeholder="Type your weekly schedule (optional)" rows="4"></textarea>
+                </div>
+
+                <!-- Then specific person regardless -->
 
                 <div class="form-group">
                     <label for="specificPreference">Is there a specific person or usra you want to be with?</label>
@@ -783,14 +822,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="depositAcknowledge" name="depositAcknowledge" required>
-                        <label for="depositAcknowledge" class="checkbox-label">
-                            I acknowledge the $10 refunded deposit as a commitment device <span class="required">*</span>
-                        </label>
-                    </div>
-                </div>
+                
 
                 <!-- Submit Button -->
                 <button type="submit" class="submit-button" id="submitBtn">
@@ -857,6 +889,79 @@
                 updateProgress()
             })
         })
+
+        // Dynamic preferences visibility and requirements
+        function updatePreferencesUI() {
+            const formData = new FormData(form)
+            const gender = formData.get('gender')
+            let location = formData.get('usraLocation')
+
+            // If Sister, force on-campus and hide the preference question
+            const usraGroup = document.getElementById('usraPreferenceGroup')
+            const onRadio = form.querySelector('input[name="usraLocation"][value="on-campus"]')
+            const offRadio = form.querySelector('input[name="usraLocation"][value="off-campus"]')
+            if (gender === 'sister') {
+                location = 'on-campus'
+                if (onRadio) onRadio.checked = true
+                if (offRadio) offRadio.checked = false
+                if (usraGroup) usraGroup.style.display = 'none'
+            } else {
+                if (usraGroup) usraGroup.style.display = ''
+            }
+
+            const onCampus = location === 'on-campus'
+            const offCampus = location === 'off-campus'
+
+            const onCampusOptions = document.getElementById('onCampusOptions')
+            const onCampusSchedule = document.getElementById('onCampusSchedule')
+            const offCampusSchedule = document.getElementById('offCampusSchedule')
+            const timingsBrother = document.getElementById('timings-brother')
+            const timingsSister = document.getElementById('timings-sister')
+            const localMasjidOff = document.getElementById('localMasjidOff')
+
+            // Reset visibility
+            onCampusOptions.style.display = onCampus ? '' : 'none'
+            offCampusSchedule.style.display = offCampus ? '' : 'none'
+            if (localMasjidOff) {
+                localMasjidOff.required = !!offCampus
+            }
+            if (!onCampus) {
+                onCampusSchedule.style.display = 'none'
+            }
+
+            // Handle timing options by gender when on-campus
+            const timingRadios = Array.from(document.querySelectorAll('input[name="campusTiming"]'))
+            timingRadios.forEach(r => r.required = false)
+
+            if (onCampus) {
+                // Show group by gender
+                if (gender === 'brother') {
+                    timingsBrother.style.display = ''
+                    timingsSister.style.display = 'none'
+                } else if (gender === 'sister') {
+                    timingsBrother.style.display = 'none'
+                    timingsSister.style.display = ''
+                } else {
+                    // No gender selected yet
+                    timingsBrother.style.display = 'none'
+                    timingsSister.style.display = 'none'
+                }
+
+                // Require a timing choice (including None) only if gender selected
+                if (gender === 'brother' || gender === 'sister') {
+                    timingRadios.forEach(r => r.required = true)
+                }
+
+                // Show on-campus schedule+upload only if 'none' selected
+                const selectedTiming = formData.get('campusTiming')
+                onCampusSchedule.style.display = selectedTiming === 'none' ? '' : 'none'
+            }
+
+            // Upload label only relevant when on-campus and 'none' selected
+            if (uploadLabel) {
+                uploadLabel.style.display = (onCampus && (new FormData(form).get('campusTiming') === 'none')) ? 'inline-flex' : 'none'
+            }
+        }
 
         // Progress bar calculation
         function updateProgress() {
@@ -933,6 +1038,14 @@
         form.addEventListener('input', updateProgress)
         form.addEventListener('change', updateProgress)
 
+        // Update preferences UI on relevant changes
+        form.addEventListener('change', (e) => {
+            if (e.target && (e.target.name === 'gender' || e.target.name === 'usraLocation' || e.target.name === 'campusTiming')) {
+                updatePreferencesUI()
+                updateProgress()
+            }
+        })
+
         // File upload label feedback
         if (scheduleUpload && uploadLabel) {
             scheduleUpload.addEventListener('change', () => {
@@ -956,6 +1069,10 @@
             
             // Combine all long-answer questions into one text field with double line breaks
             const longAnswers = []
+
+            // Gender first
+            const gender = formData.get('gender')
+            if (gender) longAnswers.push(`Gender: ${gender === 'brother' ? 'Brother' : 'Sister'}`)
             
             // Why usra
             const whyUsra = formData.get('whyUsra')
@@ -1011,19 +1128,38 @@
                 scheduleFileUrl = publicData?.publicUrl || null
             }
             
+            // Build specific preference details string (consolidates all Preferences inputs)
+            let usraLoc = formData.get('usraLocation')
+            // If Sister, assume and record On Campus regardless of radio state
+            if (gender === 'sister') usraLoc = 'on-campus'
+            const campusTiming = formData.get('campusTiming')
+            const weeklyScheduleOn = formData.get('classScheduleOn')
+            const weeklyScheduleOff = formData.get('classScheduleOff')
+            const localMasjidOffVal = formData.get('localMasjidOff')
+
+            const prefs = []
+            if (usraLoc) prefs.push(`Usra Preference: ${usraLoc === 'on-campus' ? 'On Campus' : 'Off Campus'}`)
+            if (usraLoc === 'on-campus') {
+                if (campusTiming) prefs.push(`On-campus timing: ${campusTiming.toUpperCase()}`)
+                if (campusTiming === 'none') {
+                    if (weeklyScheduleOn) prefs.push(`Weekly schedule (typed):\n${weeklyScheduleOn}`)
+                    if (scheduleFileUrl) prefs.push(`Weekly schedule (upload): ${scheduleFileUrl}`)
+                }
+            } else if (usraLoc === 'off-campus') {
+                if (localMasjidOffVal) prefs.push(`Local masjid: ${localMasjidOffVal}`)
+                if (weeklyScheduleOff) prefs.push(`Weekly schedule:\n${weeklyScheduleOff}`)
+            }
+            const specificPrefText = prefs.join('\n\n') || null
+
             const personData = {
                 person_id: personId,
                 name: formData.get('name'),
                 email: formData.get('email'),
                 phone: formData.get('phone'),
                 birthday: formData.get('birthday'),
-                age: parseInt(formData.get('age')),
                 usrah_id: null,
                 application_notes: combinedNotes,
-                local_masjid: formData.get('localMasjid'),
-                class_schedule: formData.get('classSchedule') || scheduleFileUrl || null,
-                usra_location_preference: formData.get('usraLocation'),
-                specific_preference: formData.get('specificPreference') || null,
+                specific_preference: specificPrefText || formData.get('specificPreference') || null,
                 created_at: new Date().toISOString()
             }
 
@@ -1046,7 +1182,7 @@
 
                 // Redirect to about page after short delay
                 setTimeout(() => {
-                    window.location.href = 'about.html'
+                    window.location.href = 'index.html'
                 }, 2000)
 
             } catch (error) {
@@ -1062,7 +1198,8 @@
             }
         })
 
-        // Initial progress
+        // Initial UI + progress
+        updatePreferencesUI()
         updateProgress()
     </script>
 </body>
