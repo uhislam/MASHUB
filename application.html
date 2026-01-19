@@ -698,11 +698,15 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="birthday">Birthday <span class="required">*</span></label>
-                    <input type="date" id="birthday" name="birthday" required>
+                    <label>Classification <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <label class="radio-label"><input type="radio" name="classification" value="freshman" required> Freshman</label>
+                        <label class="radio-label"><input type="radio" name="classification" value="sophomore" required> Sophomore</label>
+                        <label class="radio-label"><input type="radio" name="classification" value="junior" required> Junior</label>
+                        <label class="radio-label"><input type="radio" name="classification" value="senior" required> Senior</label>
+                    </div>
                 </div>
 
-                
 
                 <!-- Gender -->
                 <div class="form-group">
@@ -735,24 +739,24 @@
                     </div>
                 </div>
 
-                <!-- On-campus options: timings + conditional schedule/upload when None selected -->
+                <!-- On-campus options: timings + conditional schedule/upload when Other is selected -->
                 <div id="onCampusOptions" style="display:none;">
                     <div class="form-group">
-                        <label>Which of the following timings work for you?</label>
+                        <label>Which of the following timings work for you? (Select all that apply)</label>
                         <div id="timings-brother" class="radio-group" style="display:none; margin-top:8px; flex-direction: column; gap: 8px;">
-                            <label class="radio-label"><input type="radio" name="campusTiming" value="Tuesday 1-2PM"> Tuesday 1-2PM</label>
-                            <label class="radio-label"><input type="radio" name="campusTiming" value="Tuesday 4-5PM"> Tuesday 4-5PM</label>
-                            <label class="radio-label"><input type="radio" name="campusTiming" value="Thursday 12-1pm"> Thursday 12-1pm</label>
-                            <label class="radio-label"><input type="radio" name="campusTiming" value="Wednesday 3-4pm"> Wednesday 3-4pm</label>
+                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Tuesday 1-2PM"> Tuesday 1-2PM</label>
+                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Tuesday 4-5PM"> Tuesday 4-5PM</label>
+                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Thursday 12-1pm"> Thursday 12-1pm</label>
+                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Wednesday 3-4pm"> Wednesday 3-4pm</label>
                         </div>
                         <div id="timings-sister" class="radio-group" style="display:none; margin-top:8px; flex-direction: column; gap: 8px;">
-                            <label class="radio-label"><input type="radio" name="campusTiming" value="Tuesday 1-2pm"> Tuesday 1-2pm</label>
-                            <label class="radio-label"><input type="radio" name="campusTiming" value="Tuesday 4-5pm"> Tuesday 4-5pm</label>
-                            <label class="radio-label"><input type="radio" name="campusTiming" value="Thursday 4-5pm"> Thursday 4-5pm</label>
-                            <label class="radio-label"><input type="radio" name="campusTiming" value="Thursday 12-1pm"> Thursday 12-1pm</label>
+                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Tuesday 1-2pm"> Tuesday 1-2pm</label>
+                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Tuesday 4-5pm"> Tuesday 4-5pm</label>
+                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Thursday 4-5pm"> Thursday 4-5pm</label>
+                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Thursday 12-1pm"> Thursday 12-1pm</label>
                         </div>
                         <div class="radio-group" style="margin-top:8px;">
-                            <label class="radio-label"><input type="radio" name="campusTiming" value="none"> None of these work</label>
+                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="other"> Other (None of the above work)</label>
                         </div>
                     </div>
 
@@ -830,11 +834,6 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="mentors">Do you have any mentors or references who can vouch for your readiness for usra?</label>
-                    <textarea id="mentors" name="mentors" placeholder="List names and relationship..."></textarea>
-                </div>
-
-                <div class="form-group">
                     <div class="checkbox-group">
                         <input type="checkbox" id="contractRead" name="contractRead" required>
                         <label for="contractRead" class="checkbox-label">
@@ -847,7 +846,7 @@
 
                 <!-- Submit Button -->
                 <button type="submit" class="submit-button" id="submitBtn">
-                    START
+                    JOIN
                 </button>
 
                 <!-- Messages -->
@@ -951,8 +950,8 @@
             }
 
             // Handle timing options by gender when on-campus
-            const timingRadios = Array.from(document.querySelectorAll('input[name="campusTiming"]'))
-            timingRadios.forEach(r => r.required = false)
+            const timingCheckboxes = Array.from(document.querySelectorAll('input[name="campusTiming"]'))
+            timingCheckboxes.forEach(box => box.required = false)
 
             if (onCampus) {
                 // Show group by gender
@@ -968,44 +967,28 @@
                     timingsSister.style.display = 'none'
                 }
 
-                // Require a timing choice (including None) only if gender selected
-                if (gender === 'brother' || gender === 'sister') {
-                    timingRadios.forEach(r => r.required = true)
-                }
-
-                // Show on-campus schedule+upload only if 'none' selected
-                const selectedTiming = formData.get('campusTiming')
-                onCampusSchedule.style.display = selectedTiming === 'none' ? '' : 'none'
+                const selectedTimings = formData.getAll('campusTiming')
+                // Show on-campus schedule+upload only if Other is selected
+                onCampusSchedule.style.display = selectedTimings.includes('other') ? '' : 'none'
             }
 
-            // Upload label only relevant when on-campus and 'none' selected
+            // Upload label only relevant when on-campus and Other is selected
             if (uploadLabel) {
-                uploadLabel.style.display = (onCampus && (new FormData(form).get('campusTiming') === 'none')) ? 'inline-flex' : 'none'
+                uploadLabel.style.display = (onCampus && (new FormData(form).getAll('campusTiming').includes('other'))) ? 'inline-flex' : 'none'
             }
         }
 
         // Progress bar calculation
         function updateProgress() {
             const formData = new FormData(form)
-            const totalFields = form.querySelectorAll('input[required], textarea[required], select[required]').length
-            let filledFields = 0
-
-            form.querySelectorAll('input[required], textarea[required], select[required]').forEach(field => {
-                if (field.type === 'radio') {
-                    if (formData.get(field.name)) {
-                        filledFields++
-                        // Count radio group only once
-                        const radios = form.querySelectorAll(`input[name="${field.name}"]`)
-                        radios.forEach(r => {
-                            if (r !== field) r.removeAttribute('data-counted')
-                        })
-                    }
-                } else if (field.type === 'checkbox') {
-                    if (field.checked) filledFields++
-                } else {
-                    if (field.value.trim()) filledFields++
-                }
-            })
+            const gender = formData.get('gender')
+            let location = formData.get('usraLocation')
+            if (gender === 'sister') {
+                location = 'on-campus'
+            }
+            const onCampus = location === 'on-campus'
+            const timingCheckboxes = Array.from(form.querySelectorAll('input[name="campusTiming"]'))
+            const timingSelected = timingCheckboxes.some(cb => cb.checked)
 
             // Adjust for radio groups (counted multiple times)
             const radioGroups = new Set()
@@ -1034,7 +1017,7 @@
                 }
             })
 
-            const totalRequired = radioGroupNames.size + nonRadioRequired.length
+            let totalRequired = radioGroupNames.size + nonRadioRequired.length
             let completed = 0
 
             // Check radio groups
@@ -1050,6 +1033,14 @@
                     completed++
                 }
             })
+
+            // Custom requirement: at least one on-campus timing when applicable
+            if (onCampus && (gender === 'brother' || gender === 'sister')) {
+                totalRequired += 1
+                if (timingSelected) {
+                    completed += 1
+                }
+            }
 
             const progress = totalRequired > 0 ? (completed / totalRequired) * 100 : 0
             progressBar.style.width = progress + '%'
@@ -1087,13 +1078,29 @@
 
             // Collect form data
             const formData = new FormData(form)
+            const gender = formData.get('gender')
+            let location = formData.get('usraLocation')
+            if (gender === 'sister') {
+                location = 'on-campus'
+            }
+            const campusTimings = formData.getAll('campusTiming')
+
+            // Validate at least one timing when on-campus is selected
+            if (location === 'on-campus' && (gender === 'brother' || gender === 'sister') && campusTimings.length === 0) {
+                errorMessage.textContent = 'Please select at least one timing for on-campus availability.'
+                errorMessage.style.display = 'block'
+                submitBtn.disabled = false
+                submitBtn.innerHTML = 'JOIN'
+                return
+            }
             
             // Combine all long-answer questions into one text field with double line breaks
             const longAnswers = []
 
-            // Gender first
-            const gender = formData.get('gender')
+            // Gender and classification
             if (gender) longAnswers.push(`Gender: ${gender === 'brother' ? 'Brother' : 'Sister'}`)
+            const classification = formData.get('classification')
+            if (classification) longAnswers.push(`Classification: ${classification}`)
             
             // Why usra
             const whyUsra = formData.get('whyUsra')
@@ -1110,10 +1117,6 @@
                 const volunteerDetails = formData.get('volunteerDetailsText')
                 if (volunteerDetails) longAnswers.push(`Volunteering/community service?\n${volunteerDetails}`)
             }
-            
-            // Mentors
-            const mentors = formData.get('mentors')
-            if (mentors) longAnswers.push(`Mentors or references?\n${mentors}`)
             
             // Combine with double line breaks
             const combinedNotes = longAnswers.join('\n\n')
@@ -1150,10 +1153,9 @@
             }
             
             // Build specific preference details string (consolidates all Preferences inputs)
-            let usraLoc = formData.get('usraLocation')
+            let usraLoc = location
             // If Sister, assume and record On Campus regardless of radio state
             if (gender === 'sister') usraLoc = 'on-campus'
-            const campusTiming = formData.get('campusTiming')
             const weeklyScheduleOn = formData.get('classScheduleOn')
             const weeklyScheduleOff = formData.get('classScheduleOff')
             const localMasjidOffVal = formData.get('localMasjidOff')
@@ -1161,8 +1163,8 @@
             const prefs = []
             if (usraLoc) prefs.push(`Usra Preference: ${usraLoc === 'on-campus' ? 'On Campus' : 'Off Campus'}`)
             if (usraLoc === 'on-campus') {
-                if (campusTiming) prefs.push(`On-campus timing: ${campusTiming.toUpperCase()}`)
-                if (campusTiming === 'none') {
+                if (campusTimings.length) prefs.push(`On-campus timing(s): ${campusTimings.map(t => t.toUpperCase()).join(', ')}`)
+                if (campusTimings.includes('other')) {
                     if (weeklyScheduleOn) prefs.push(`Weekly schedule (typed):\n${weeklyScheduleOn}`)
                     if (scheduleFileUrl) prefs.push(`Weekly schedule (upload): ${scheduleFileUrl}`)
                 }
@@ -1177,7 +1179,6 @@
                 name: formData.get('name'),
                 email: formData.get('email'),
                 phone: formData.get('phone'),
-                birthday: formData.get('birthday'),
                 usrah_id: null,
                 application_notes: combinedNotes,
                 specific_preference: specificPrefText || formData.get('specificPreference') || null,
@@ -1212,7 +1213,7 @@
                 errorMessage.style.display = 'block'
                 
                 submitBtn.disabled = false
-                submitBtn.innerHTML = 'START'
+                submitBtn.innerHTML = 'JOIN'
 
                 // Scroll to error
                 errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' })
