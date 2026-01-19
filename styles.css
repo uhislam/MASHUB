@@ -27,25 +27,12 @@ body {
 	margin: 0;
 	font-family: 'Inter', sans-serif;
 	line-height: 1.6;
-	background: radial-gradient(1200px 600px at 50% -200px, #0b1120 0%, #050b16 100%);
+	background: url('background.webp') center center / cover no-repeat fixed;
 	color: var(--text);
 	min-height: 100vh;
 	padding: 24px 16px 32px;
 	position: relative;
 	overflow-x: hidden;
-}
-
-/* Blue glow from top */
-body::before {
-	content: '';
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	height: 300px;
-	background: radial-gradient(ellipse 800px 200px at 50% 0%, rgba(0, 229, 255, 0.15), transparent);
-	pointer-events: none;
-	z-index: 0;
 }
 
 /* Green glow from bottom */

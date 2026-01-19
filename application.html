@@ -15,6 +15,27 @@
             padding: 0;
             font-size: 17px;
         }
+
+        /* Dark overlay for application page only */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(5, 11, 22, 0.6);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Ensure all content is above the overlay */
+        .progress-container,
+        .header,
+        .container {
+            position: relative;
+            z-index: 1;
+        }
         
         .container {
             padding: 0 20px 60px;
