@@ -64,14 +64,51 @@
 
 		.card ul {
 			color: #e2e8f0;
-			line-height: 1.8;
-			margin: 20px 0;
+			line-height: 1.6;
+			margin: 14px 0;
 			padding-left: 30px;
 			font-size: clamp(15px, 2.5vw, 17px);
 		}
 
 		.card li {
-			margin-bottom: 12px;
+			margin-bottom: 4px;
+		}
+
+		.about-photo {
+			width: 100%;
+			display: block;
+			border-radius: 12px;
+			margin: 0 0 18px;
+			border: 1px solid rgba(148, 163, 184, 0.25);
+			box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+			object-fit: cover;
+		}
+
+		details.faq-item {
+			background: rgba(148, 163, 184, 0.08);
+			border: 1px solid rgba(148, 163, 184, 0.25);
+			border-radius: 10px;
+			padding: 12px 14px;
+			margin: 12px 0;
+		}
+
+		details.faq-item[open] {
+			background: rgba(148, 163, 184, 0.14);
+		}
+
+		details.faq-item summary {
+			cursor: pointer;
+			color: #e2e8f0;
+			font-weight: 700;
+			list-style: none;
+		}
+
+		details.faq-item summary::-webkit-details-marker {
+			display: none;
+		}
+
+		details.faq-item p {
+			margin: 10px 0 0;
 		}
 
 		.card strong {
@@ -136,20 +173,41 @@
 		</header>
 
 		<div class="card">
-			<p>Tarbiya is a process of holistic Islamic formation—not just learning information, but shaping a person into someone whose faith is rooted, whose soul is purified, and whose life becomes aligned with Allah through consistent practice. Tarbiya exists because transformation doesn't happen in a vacuum: people need a community of believers, mentors, and friends who help them set priorities, carry burdens together, and live Islam as a mission rather than theory. It's meant to create "servant leaders" who grow through a rigorous journey that engages the heart, mind, and body—so Islam becomes lived, not merely understood.</p>
+			<img src="main.jpg" alt="Tarbiya community" class="about-photo">
+			<p>College can feel overwhelming, isolating, and fast-moving. Many students want to stay connected to Islam, but struggle to find spaces that feel genuine, relevant, and supportive.</p>
 			
-			<p>On campus, you can think of tarbiya as being "installed" through four pressure points that hit different muscles of the soul over time:</p>
+			<p>Joining an Usra is a solution. An usrah is a group of 7-10 students that meets on a weekly basis for one semester to develop their faith, character, and bonds with a curriculum.</p>
+			
+									<p>Joining an Usra isn't about overcommitting. It's about choosing intentional growth with people who care about you. If you want to graduate more grounded, confident, and connected — this may be what your looking for.</p>
+
+
+			<details class="faq-item">
+				<summary>What can I expect from an Usra?</summary>
+				<img src="about.webp" alt="Students in Usra" class="about-photo">
+				<p>In your usrah, you'll find:</p>
 			
 			<ul>
-								<li><strong>Usras</strong> provide the steady weekly environment of love, accountability, mentorship, and teamwork</li>
-				<li><strong>Tarbiya retreats</strong> create intensity and emotional/spiritual reset</li>
-				<li><strong>Activism</strong> turns belief into responsibility and service</li>
-				<li><strong>PDPs</strong> translate inspiration into sustainable habits and measurable growth</li>
+				<li><strong>A meaningful connection to Islam</strong></li>
+				<li><strong>Belonging without judgment</strong></li>
+				<li><strong>A safe space to ask hard questions</strong></li>
+				<li><strong>Habits and Accountability that help you flourish</strong></li>
+				<li><strong>A path to activism without burnout</strong></li>
 			</ul>
-			
-			<p>When these four run together transformation becomes far more likely to stick, because the person is being shaped spiritually, socially, and practically at the same time.</p>
 
-			<a href="application.html" class="apply-button">Apply to Join</a>
+			</details>
+
+			<details class="faq-item">
+				<summary>What is Tarbiya?</summary>
+				<img src="about2.webp" alt="Tarbiya formation" class="about-photo">
+				<p>Tarbiya is a process of holistic Islamic formation—not just learning information, but shaping a person into someone whose faith is rooted, whose soul is purified, and whose life becomes aligned with Allah through consistent practice. Tarbiya exists because transformation doesn't happen in a vacuum: people need a community of believers, mentors, and friends who help them set priorities, carry burdens together, and live Islam as a mission rather than theory. It's meant to create "servant leaders" who grow through a rigorous journey that engages the heart, mind, and body—so Islam becomes lived, not merely understood.</p>
+			</details>
+
+			<details class="faq-item">
+				<summary>How are usra groups made?</summary>
+				<p>It is primarily based on the timing you select in your application. After that, its based on any preferences you mention in your application. If you have preferences, make them known!</p>
+			</details>
+			<a href="application.html" class="apply-button">Join An Usra</a>
+
 		</div>
 	</div>
 </body>
