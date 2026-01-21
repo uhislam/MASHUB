@@ -27,12 +27,19 @@ body {
 	margin: 0;
 	font-family: 'Inter', sans-serif;
 	line-height: 1.6;
-	background: url('background.webp') center center / cover no-repeat fixed;
+	background-color: #000000;
 	color: var(--text);
 	min-height: 100vh;
 	padding: 24px 16px 32px;
 	position: relative;
 	overflow-x: hidden;
+}
+
+/* Lazy load background images - only on non-mobile screens */
+@media (min-width: 768px) {
+	body.lazy-bg {
+		background: url('background.webp') center center / cover no-repeat fixed;
+	}
 }
 
 /* Green glow from bottom */

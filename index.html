@@ -10,13 +10,20 @@
 	<style>
 		/* Dark night texture overlay */
 		body {
-			background-image: url('Assets/darknight.jpg');
-			background-size: 100vw;
-			background-repeat: repeat;
-			background-blend-mode: overlay;
+			background-color: #000000;
 			padding: 0;
 			font-size: 17px;
 			font-family: 'Inter', sans-serif;
+		}
+
+		/* Lazy load background - only on non-mobile screens */
+		@media (min-width: 768px) {
+			body.lazy-bg {
+				background-image: url('Assets/darknight.jpg');
+				background-size: 100vw;
+				background-repeat: repeat;
+				background-blend-mode: overlay;
+			}
 		}
 
 		.container {
@@ -210,5 +217,11 @@
 
 		</div>
 	</div>
-</body>
-</html>
+<script>
+	// Lazy load background image after page loads
+	window.addEventListener('load', function() {
+		setTimeout(function() {
+			document.body.classList.add('lazy-bg');
+		}, 100);
+	});
+</script>
