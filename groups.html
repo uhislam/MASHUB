@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+	<title>Usra Groups</title>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="styles.css">
+	<style>
+		body {
+			background-color: #000000;
+		}
+
+		@media (min-width: 768px) {
+			body.lazy-bg {
+				background-image: url('Assets/darknight.jpg');
+				background-size: 100vw;
+				background-repeat: repeat;
+				background-blend-mode: overlay;
+			}
+		}
+
+		.header-icon {
+			max-width: 100px;
+			height: auto;
+			margin-bottom: 15px;
+		}
+
+		.groups-container {
+			display: flex;
+			flex-direction: column;
+			gap: 30px;
+		}
+
+		.usrah-group {
+			background: rgba(30, 41, 59, 0.6);
+			backdrop-filter: blur(10px);
+			border: 2px solid rgba(148, 163, 184, 0.2);
+			border-radius: 12px;
+			padding: 24px;
+			box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+		}
+
+		.group-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 20px;
+			padding-bottom: 15px;
+			border-bottom: 2px solid rgba(74, 222, 128, 0.3);
+		}
+
+		.group-title {
+			font-family: 'Press Start 2P', cursive;
+			font-size: clamp(12px, 3vw, 18px);
+			color: #4ade80;
+			margin: 0;
+			line-height: 1.6;
+		}
+
+		.group-count {
+			background: rgba(74, 222, 128, 0.2);
+			border: 1px solid rgba(74, 222, 128, 0.5);
+			border-radius: 6px;
+			padding: 6px 12px;
+			color: #4ade80;
+			font-size: 14px;
+			font-weight: 600;
+		}
+
+		.members-list {
+			display: flex;
+			flex-direction: column;
+			gap: 0;
+		}
+
+		.member-item {
+			padding: 10px 0;
+			color: #e2e8f0;
+			font-size: 15px;
+			border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+		}
+
+		.member-item:last-child {
+			border-bottom: none;
+		}
+
+		.unassigned-group {
+			border-color: rgba(239, 68, 68, 0.2);
+		}
+
+		.unassigned-group .group-title {
+			color: #ef4444;
+		}
+
+		.unassigned-group .group-count {
+			background: rgba(239, 68, 68, 0.2);
+			border-color: rgba(239, 68, 68, 0.5);
+			color: #ef4444;
+		}
+
+		.unassigned-group .member-item:hover {
+			border-color: rgba(239, 68, 68, 0.4);
+		}
+
+		.unassigned-group .member-rating {
+			background: rgba(239, 68, 68, 0.1);
+			border-color: rgba(239, 68, 68, 0.3);
+			color: #ef4444;
+		}
+
+		#status {
+			text-align: center;
+			padding: 20px;
+			color: #94a3b8;
+			font-style: italic;
+		}
+
+		#status.error {
+			color: #ef4444;
+		}
+	</style>
+	<script type="module">
+		import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+		window.supabaseCreateClient = createClient;
+	</script>
+</head>
+<body>
+	<div class="container">
+		<header>
+			<h1>Usra Groups</h1>
+		</header>
+
+		<div class="card">
+			<div id="status" class="loading">Loading groups…</div>
+			<div id="groups-content" class="groups-container" style="display:none;"></div>
+		</div>
+	</div>
+
+	<footer class="site-footer">
+		<div class="footer-content">
+			<div class="actions-row" aria-label="Quick actions">
+				<a class="pixel-button" href="index.html">About Tarbiya</a>
+				<a class="pixel-button" href="leaderboard.html">Leaderboard</a>
+				<a class="pixel-button" href="log.html">Log Activity</a>
+			</div>
+			<div class="footer-brand" aria-label="Organization branding">
+				<p>&copy; 2025 Muslim American Society Houston. All rights reserved.</p>
+			</div>
+		</div>
+	</footer>
+
+	<script type="module">
+		import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+		
+		const SUPABASE_URL = 'https://ocjtsdxrhmikrzypfkbq.supabase.co';
+		const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
+		const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+		const statusEl = document.getElementById('status');
+		const contentEl = document.getElementById('groups-content');
+
+		async function loadGroups() {
+			try {
+				statusEl.textContent = 'Loading groups…';
+
+				// Load all people and usrah data
+				const [peopleRes, usrahRes] = await Promise.all([
+					supabase.from('people').select('*').order('name'),
+					supabase.from('usrah').select('*').order('usrah_name')
+				]);
+
+				if (peopleRes.error) throw peopleRes.error;
+				if (usrahRes.error) throw usrahRes.error;
+
+				const people = peopleRes.data || [];
+				const usrah = usrahRes.data || [];
+
+				// Create usrah lookup map
+				const usrahById = new Map(usrah.map(u => [u.usrah_id, u]));
+
+				// Group people by usrah_id
+				const groupedByUsrah = new Map();
+				const unassigned = [];
+
+				people.forEach(person => {
+					if (person.usrah_id) {
+						if (!groupedByUsrah.has(person.usrah_id)) {
+							groupedByUsrah.set(person.usrah_id, []);
+						}
+						groupedByUsrah.get(person.usrah_id).push(person);
+					} else {
+						unassigned.push(person);
+					}
+				});
+
+				// Render groups (assigned first, then unassigned)
+				const html = [];
+
+				// Render assigned usrah groups
+				const usrahIds = Array.from(groupedByUsrah.keys()).sort();
+				usrahIds.forEach(usrahId => {
+					const members = groupedByUsrah.get(usrahId);
+					const usrahInfo = usrahById.get(usrahId);
+					const usrahName = usrahInfo?.usrah_name || 'Unknown Usrah';
+
+					const membersHtml = members.map(member => `
+						<div class="member-item">${member.name || '—'}</div>
+					`).join('');
+
+					html.push(`
+						<div class="usrah-group">
+							<div class="group-header">
+								<h2 class="group-title">${usrahName} [${usrahId}]</h2>
+								<span class="group-count">${members.length} member${members.length !== 1 ? 's' : ''}</span>
+							</div>
+							<div class="members-list">
+								${membersHtml}
+							</div>
+						</div>
+					`);
+				});
+
+				// Render unassigned group at bottom
+				if (unassigned.length > 0) {
+					const unassignedHtml = unassigned.map(person => `
+						<div class="member-item">${person.name || '—'}</div>
+					`).join('');
+
+					html.push(`
+						<div class="usrah-group unassigned-group">
+							<div class="group-header">
+								<h2 class="group-title">Unassigned [N/A]</h2>
+								<span class="group-count">${unassigned.length} member${unassigned.length !== 1 ? 's' : ''}</span>
+							</div>
+							<div class="members-list">
+								${unassignedHtml}
+							</div>
+						</div>
+					`);
+				}
+
+				// Update DOM
+				contentEl.innerHTML = html.join('');
+				contentEl.style.display = 'flex';
+				statusEl.style.display = 'none';
+
+			} catch (err) {
+				console.error('Error loading groups:', err);
+				statusEl.textContent = 'Error loading groups. Please try again.';
+				statusEl.classList.add('error');
+			}
+		}
+
+		// Load groups on page load
+		loadGroups();
+
+		// Lazy load background image after page loads
+		window.addEventListener('load', function() {
+			setTimeout(function() {
+				document.body.classList.add('lazy-bg');
+			}, 100);
+		});
+	</script>
+</body>
+</html>

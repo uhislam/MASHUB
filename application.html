@@ -731,10 +731,10 @@
                     <label>Usra Preference <span class="required">*</span></label>
                     <div class="radio-group">
                         <label class="radio-label">
-                            <input type="radio" name="usraLocation" value="on-campus" required> On Campus (University of Houston)
+                            <input type="checkbox" name="usraLocation" value="on-campus"> On Campus (University of Houston)
                         </label>
                         <label class="radio-label">
-                            <input type="radio" name="usraLocation" value="off-campus"> Off Campus
+                            <input type="checkbox" name="usraLocation" value="off-campus"> Off Campus
                         </label>
                     </div>
                 </div>
@@ -914,23 +914,22 @@
         function updatePreferencesUI() {
             const formData = new FormData(form)
             const gender = formData.get('gender')
-            let location = formData.get('usraLocation')
+            const locations = formData.getAll('usraLocation')
 
             // If Sister, force on-campus and hide the preference question
             const usraGroup = document.getElementById('usraPreferenceGroup')
-            const onRadio = form.querySelector('input[name="usraLocation"][value="on-campus"]')
-            const offRadio = form.querySelector('input[name="usraLocation"][value="off-campus"]')
+            const onCheckbox = form.querySelector('input[name="usraLocation"][value="on-campus"]')
+            const offCheckbox = form.querySelector('input[name="usraLocation"][value="off-campus"]')
             if (gender === 'sister') {
-                location = 'on-campus'
-                if (onRadio) onRadio.checked = true
-                if (offRadio) offRadio.checked = false
+                if (onCheckbox) onCheckbox.checked = true
+                if (offCheckbox) offCheckbox.checked = false
                 if (usraGroup) usraGroup.style.display = 'none'
             } else {
                 if (usraGroup) usraGroup.style.display = ''
             }
 
-            const onCampus = location === 'on-campus'
-            const offCampus = location === 'off-campus'
+            const onCampus = locations.includes('on-campus') || gender === 'sister'
+            const offCampus = locations.includes('off-campus') && gender !== 'sister'
 
             const onCampusOptions = document.getElementById('onCampusOptions')
             const onCampusSchedule = document.getElementById('onCampusSchedule')
@@ -982,11 +981,8 @@
         function updateProgress() {
             const formData = new FormData(form)
             const gender = formData.get('gender')
-            let location = formData.get('usraLocation')
-            if (gender === 'sister') {
-                location = 'on-campus'
-            }
-            const onCampus = location === 'on-campus'
+            const locations = formData.getAll('usraLocation')
+            const onCampus = locations.includes('on-campus') || gender === 'sister'
             const timingCheckboxes = Array.from(form.querySelectorAll('input[name="campusTiming"]'))
             const timingSelected = timingCheckboxes.some(cb => cb.checked)
 
@@ -1079,14 +1075,22 @@
             // Collect form data
             const formData = new FormData(form)
             const gender = formData.get('gender')
-            let location = formData.get('usraLocation')
-            if (gender === 'sister') {
-                location = 'on-campus'
-            }
+            const locations = formData.getAll('usraLocation')
+            const onCampus = locations.includes('on-campus') || gender === 'sister'
+            const offCampus = locations.includes('off-campus') && gender !== 'sister'
             const campusTimings = formData.getAll('campusTiming')
 
+            // Validate at least one location is selected
+            if (!onCampus && !offCampus) {
+                errorMessage.textContent = 'Please select at least one usra preference (On Campus or Off Campus).';
+                errorMessage.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'JOIN';
+                return;
+            }
+
             // Validate at least one timing when on-campus is selected
-            if (location === 'on-campus' && (gender === 'brother' || gender === 'sister') && campusTimings.length === 0) {
+            if (onCampus && (gender === 'brother' || gender === 'sister') && campusTimings.length === 0) {
                 errorMessage.textContent = 'Please select at least one timing for on-campus availability.'
                 errorMessage.style.display = 'block'
                 submitBtn.disabled = false
@@ -1153,22 +1157,24 @@
             }
             
             // Build specific preference details string (consolidates all Preferences inputs)
-            let usraLoc = location
-            // If Sister, assume and record On Campus regardless of radio state
-            if (gender === 'sister') usraLoc = 'on-campus'
             const weeklyScheduleOn = formData.get('classScheduleOn')
             const weeklyScheduleOff = formData.get('classScheduleOff')
             const localMasjidOffVal = formData.get('localMasjidOff')
 
             const prefs = []
-            if (usraLoc) prefs.push(`Usra Preference: ${usraLoc === 'on-campus' ? 'On Campus' : 'Off Campus'}`)
-            if (usraLoc === 'on-campus') {
+            const selectedLocations = []
+            if (onCampus) selectedLocations.push('On Campus')
+            if (offCampus) selectedLocations.push('Off Campus')
+            if (selectedLocations.length) prefs.push(`Usra Preference: ${selectedLocations.join(' and ')}`)
+            
+            if (onCampus) {
                 if (campusTimings.length) prefs.push(`On-campus timing(s): ${campusTimings.map(t => t.toUpperCase()).join(', ')}`)
                 if (campusTimings.includes('other')) {
                     if (weeklyScheduleOn) prefs.push(`Weekly schedule (typed):\n${weeklyScheduleOn}`)
                     if (scheduleFileUrl) prefs.push(`Weekly schedule (upload): ${scheduleFileUrl}`)
                 }
-            } else if (usraLoc === 'off-campus') {
+            }
+            if (offCampus) {
                 if (localMasjidOffVal) prefs.push(`Local masjid: ${localMasjidOffVal}`)
                 if (weeklyScheduleOff) prefs.push(`Weekly schedule:\n${weeklyScheduleOff}`)
             }
