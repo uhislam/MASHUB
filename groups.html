@@ -34,12 +34,12 @@
 		}
 
 		.usrah-group {
-			background: rgba(30, 41, 59, 0.6);
-			backdrop-filter: blur(10px);
-			border: 2px solid rgba(148, 163, 184, 0.2);
-			border-radius: 12px;
-			padding: 24px;
-			box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+			padding: 24px 0;
+			border-bottom: 2px solid rgba(148, 163, 184, 0.2);
+		}
+
+		.usrah-group:last-child {
+			border-bottom: none;
 		}
 
 		.group-header {
@@ -67,6 +67,25 @@
 			color: #4ade80;
 			font-size: 14px;
 			font-weight: 600;
+			white-space: nowrap;
+		}
+
+		.group-count.low {
+			background: rgba(239, 68, 68, 0.2);
+			border-color: rgba(239, 68, 68, 0.5);
+			color: #ef4444;
+		}
+
+		.group-count.medium {
+			background: rgba(251, 191, 36, 0.2);
+			border-color: rgba(251, 191, 36, 0.5);
+			color: #fbbf24;
+		}
+
+		.group-count.high {
+			background: rgba(74, 222, 128, 0.2);
+			border-color: rgba(74, 222, 128, 0.5);
+			color: #4ade80;
 		}
 
 		.members-list {
@@ -142,11 +161,11 @@
 		<div class="footer-content">
 			<div class="actions-row" aria-label="Quick actions">
 				<a class="pixel-button" href="index.html">About Tarbiya</a>
-				<a class="pixel-button" href="leaderboard.html">Leaderboard</a>
-				<a class="pixel-button" href="log.html">Log Activity</a>
+				<!-- <a class="pixel-button" href="leaderboard.html">Leaderboard</a> -->
+				<!-- <a class="pixel-button" href="log.html">Log Activity</a> -->
 			</div>
 			<div class="footer-brand" aria-label="Organization branding">
-				<p>&copy; 2025 Muslim American Society Houston. All rights reserved.</p>
+				<!-- <p>&copy; 2025 Muslim American Society Houston. All rights reserved.</p> -->
 			</div>
 		</div>
 	</footer>
@@ -209,11 +228,14 @@
 						<div class="member-item">${member.name || '—'}</div>
 					`).join('');
 
-					html.push(`
-						<div class="usrah-group">
-							<div class="group-header">
-								<h2 class="group-title">${usrahName} [${usrahId}]</h2>
-								<span class="group-count">${members.length} member${members.length !== 1 ? 's' : ''}</span>
+				const memberCount = members.length;
+				const capacityClass = memberCount <= 3 ? 'low' : memberCount <= 6 ? 'medium' : 'high';
+
+				html.push(`
+					<div class="usrah-group">
+						<div class="group-header">
+							<h2 class="group-title">${usrahId}<br><span style="font-size: 0.8em; color: #94a3b8;">${usrahName}</span></h2>
+							<span class="group-count ${capacityClass}">${memberCount}/10 members</span>
 							</div>
 							<div class="members-list">
 								${membersHtml}
@@ -232,7 +254,7 @@
 						<div class="usrah-group unassigned-group">
 							<div class="group-header">
 								<h2 class="group-title">Unassigned [N/A]</h2>
-								<span class="group-count">${unassigned.length} member${unassigned.length !== 1 ? 's' : ''}</span>
+								<span class="group-count">${unassigned.length} left</span>
 							</div>
 							<div class="members-list">
 								${unassignedHtml}
