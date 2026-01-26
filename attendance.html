@@ -431,125 +431,142 @@
 		const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9janRzZHhyaG1pa3J6eXBma2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzkyNTIsImV4cCI6MjA4MTkxNTI1Mn0.pfJlB37YNRI_3iu76zX_FFiq_ciwVk0qOqpdSbMYVCA';
 		const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-		const usrahSelect = document.getElementById('usrahSelect');
-		const attendeesList = document.getElementById('attendeesList');
-		const attendeesContainer = document.getElementById('attendeesContainer');
-		const form = document.getElementById('attendanceForm');
-		const successMessage = document.getElementById('successMessage');
-		const errorMessage = document.getElementById('errorMessage');
+		// Wait for DOM to be ready
+		function initializeForm() {
+			const usrahSelect = document.getElementById('usrahSelect');
+			const attendeesList = document.getElementById('attendeesList');
+			const attendeesContainer = document.getElementById('attendeesContainer');
+			const form = document.getElementById('attendanceForm');
+			const successMessage = document.getElementById('successMessage');
+			const errorMessage = document.getElementById('errorMessage');
 
-		let allUsrahs = [];
-		let allPeople = [];
+			let allUsrahs = [];
+			let allPeople = [];
 
-		// Load usrahs on page load
-		async function loadUsrahs() {
-			try {
-				const { data, error } = await supabase.from('usrah').select('*');
-				if (error) throw error;
-				allUsrahs = data || [];
-				populateUsrahDropdown();
-			} catch (err) {
-				console.error('Error loading usrahs:', err);
-				errorMessage.textContent = 'Error loading usrahs. Please refresh the page.';
-				errorMessage.style.display = 'block';
+			// Load usrahs on page load
+			async function loadUsrahs() {
+				try {
+					console.log('Loading usrahs from Supabase...');
+					const { data, error } = await supabase.from('usrah').select('*').order('usrah_name');
+					if (error) throw error;
+					console.log('Usrahs loaded:', data);
+					allUsrahs = data || [];
+					populateUsrahDropdown();
+				} catch (err) {
+					console.error('Error loading usrahs:', err);
+					errorMessage.textContent = 'Error loading usrahs. Please refresh the page.';
+					errorMessage.style.display = 'block';
+				}
 			}
-		}
 
-		// Load all people once
-		async function loadPeople() {
-			try {
-				const { data, error } = await supabase.from('people').select('*');
-				if (error) throw error;
-				allPeople = data || [];
-			} catch (err) {
-				console.error('Error loading people:', err);
+			// Load all people once
+			async function loadPeople() {
+				try {
+					const { data, error } = await supabase.from('people').select('*');
+					if (error) throw error;
+					allPeople = data || [];
+					console.log('People loaded:', allPeople.length);
+				} catch (err) {
+					console.error('Error loading people:', err);
+				}
 			}
-		}
 
-		function populateUsrahDropdown() {
-			usrahSelect.innerHTML = '<option value="">-- Choose a Usrah --</option>';
-			allUsrahs.forEach(usrah => {
-				const option = document.createElement('option');
-				option.value = usrah.usrah_id;
-				option.textContent = usrah.usrah_name;
-				usrahSelect.appendChild(option);
+			function populateUsrahDropdown() {
+				usrahSelect.innerHTML = '<option value="">-- Choose a Usrah --</option>';
+				allUsrahs.forEach(usrah => {
+					const option = document.createElement('option');
+					option.value = usrah.usrah_id;
+					option.textContent = usrah.usrah_name;
+					usrahSelect.appendChild(option);
+				});
+				console.log('Dropdown populated with', allUsrahs.length, 'usrahs');
+			}
+
+			function renderAttendees(usrahId) {
+				const usrahPeople = allPeople.filter(p => p.usrah_id === usrahId);
+				
+				if (usrahPeople.length === 0) {
+					attendeesList.innerHTML = '<p style="color: #94a3b8; text-align: center;">No members in this usrah.</p>';
+					return;
+				}
+
+				attendeesList.innerHTML = usrahPeople.map(person => `
+					<div class="attendee-item">
+						<input type="checkbox" id="person_${person.person_id}" name="attendees" value="${person.person_id}">
+						<label for="person_${person.person_id}">${person.name}</label>
+					</div>
+				`).join('');
+			}
+
+			usrahSelect.addEventListener('change', (e) => {
+				if (e.target.value) {
+					renderAttendees(e.target.value);
+					attendeesContainer.style.display = 'block';
+				} else {
+					attendeesContainer.style.display = 'none';
+				}
 			});
+
+			form.addEventListener('submit', async (e) => {
+				e.preventDefault();
+
+				const usrahId = usrahSelect.value;
+				const date = document.getElementById('attendanceDate').value;
+				const brotherhoodLevel = document.querySelector('input[name="brotherhoodLevel"]:checked')?.value;
+				const curriculumProgress = document.querySelector('input[name="curriculumProgress"]:checked')?.value;
+				const selectedAttendees = Array.from(document.querySelectorAll('input[name="attendees"]:checked')).map(cb => cb.value);
+
+				if (!usrahId || !date || !brotherhoodLevel || !curriculumProgress) {
+					errorMessage.textContent = 'Please fill in all required fields.';
+					errorMessage.style.display = 'block';
+					return;
+				}
+
+				try {
+					// Insert attendance record
+					const { error } = await supabase.from('attendance').insert([{
+						usrah_id: usrahId,
+						attendance_date: date,
+						attendee_ids: selectedAttendees,
+						brotherhood_level: parseInt(brotherhoodLevel),
+						curriculum_progress: parseInt(curriculumProgress)
+					}]);
+
+					if (error) throw error;
+
+					successMessage.style.display = 'block';
+					errorMessage.style.display = 'none';
+					form.reset();
+					attendeesContainer.style.display = 'none';
+
+					setTimeout(() => {
+						window.location.href = 'index.html';
+					}, 3000);
+				} catch (err) {
+					console.error('Error submitting attendance:', err);
+					errorMessage.textContent = 'Error submitting attendance. Please try again.';
+					errorMessage.style.display = 'block';
+				}
+			});
+
+			// Initialize
+			loadUsrahs();
+			loadPeople();
 		}
 
-		function renderAttendees(usrahId) {
-			const usrahPeople = allPeople.filter(p => p.usrah_id === usrahId);
-			
-			if (usrahPeople.length === 0) {
-				attendeesList.innerHTML = '<p style="color: #94a3b8; text-align: center;">No members in this usrah.</p>';
-				return;
-			}
-
-			attendeesList.innerHTML = usrahPeople.map(person => `
-				<div class="attendee-item">
-					<input type="checkbox" id="person_${person.person_id}" name="attendees" value="${person.person_id}">
-					<label for="person_${person.person_id}">${person.name}</label>
-				</div>
-			`).join('');
+		// Initialize when DOM is ready
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', initializeForm);
+		} else {
+			initializeForm();
 		}
 
-		usrahSelect.addEventListener('change', (e) => {
-			if (e.target.value) {
-				renderAttendees(e.target.value);
-				attendeesContainer.style.display = 'block';
-			} else {
-				attendeesContainer.style.display = 'none';
-			}
+		// Lazy load background image after page loads
+		window.addEventListener('load', function() {
+			setTimeout(function() {
+				document.body.classList.add('lazy-bg');
+			}, 100);
 		});
-
-		form.addEventListener('submit', async (e) => {
-			e.preventDefault();
-
-			const usrahId = usrahSelect.value;
-			const date = document.getElementById('attendanceDate').value;
-			const brotherhoodLevel = document.querySelector('input[name="brotherhoodLevel"]:checked')?.value;
-			const curriculumProgress = document.querySelector('input[name="curriculumProgress"]:checked')?.value;
-			const selectedAttendees = Array.from(document.querySelectorAll('input[name="attendees"]:checked')).map(cb => cb.value);
-
-			if (!usrahId || !date || !brotherhoodLevel || !curriculumProgress) {
-				errorMessage.textContent = 'Please fill in all required fields.';
-				errorMessage.style.display = 'block';
-				return;
-			}
-
-			try {
-				// Insert attendance record
-				const { error } = await supabase.from('attendance').insert([{
-					usrah_id: usrahId,
-					attendance_date: date,
-					attendee_ids: selectedAttendees,
-					brotherhood_level: parseInt(brotherhoodLevel),
-					curriculum_progress: parseInt(curriculumProgress)
-				}]);
-
-				if (error) throw error;
-
-				successMessage.style.display = 'block';
-				errorMessage.style.display = 'none';
-				form.reset();
-				attendeesContainer.style.display = 'none';
-
-				setTimeout(() => {
-					window.location.href = 'index.html';
-				}, 3000);
-			} catch (err) {
-				console.error('Error submitting attendance:', err);
-				errorMessage.textContent = 'Error submitting attendance. Please try again.';
-				errorMessage.style.display = 'block';
-			}
-		});
-
-		// Initialize
-		loadUsrahs();
-		loadPeople();
-
-	// Lazy load background image after page loads
-	window.addEventListener('load', function() {
-		setTimeout(function() {
-			document.body.classList.add('lazy-bg');
-		}, 100);
-	});
+	</script>
+</body>
+</html>

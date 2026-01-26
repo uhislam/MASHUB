@@ -726,6 +726,15 @@
 
                 <p class="muted" style="margin-bottom:12px;">This helps us place you with the best-fit usra.</p>
 
+                <!-- Available Usrahs -->
+                <div class="form-group">
+                    <label for="usrahSelect">Available Usrahs <span class="required">*</span></label>
+                    <select id="usrahSelect" name="usrah" required>
+                        <option value="">Loading usrahs...</option>
+                    </select>
+                    <div id="usrahStatus" class="muted" style="margin-top: 8px;"></div>
+                </div>
+
                 <!-- Usra Preference first -->
                 <div class="form-group" id="usraPreferenceGroup">
                     <label>Usra Preference <span class="required">*</span></label>
@@ -876,6 +885,45 @@
         const progressBar = document.getElementById('progressBar')
         const scheduleUpload = document.getElementById('scheduleUpload')
         const uploadLabel = document.querySelector('label.upload-label')
+        const usrahSelect = document.getElementById('usrahSelect')
+        const usrahStatus = document.getElementById('usrahStatus')
+
+        // Store loaded usrahs
+        let allUsrahs = []
+
+        // Load usrahs on page load
+        async function loadUsrahs() {
+            try {
+                const { data, error } = await supabase
+                    .from('usrah')
+                    .select('*')
+                    .order('usrah_name')
+                
+                if (error) throw error
+
+                allUsrahs = data || []
+                populateUsrahDropdown()
+
+                if (allUsrahs.length === 0) {
+                    usrahStatus.textContent = 'No usrahs available at this time.'
+                }
+            } catch (err) {
+                console.error('Error loading usrahs:', err)
+                usrahSelect.innerHTML = '<option value="">Error loading usrahs</option>'
+                usrahStatus.textContent = 'Could not load usrahs. Please refresh the page.'
+                usrahStatus.style.color = '#ef4444'
+            }
+        }
+
+        function populateUsrahDropdown() {
+            usrahSelect.innerHTML = '<option value="">-- Select an Usrah --</option>'
+            allUsrahs.forEach(usrah => {
+                const option = document.createElement('option')
+                option.value = usrah.usrah_id
+                option.textContent = `${usrah.usrah_id} - ${usrah.usrah_name}`
+                usrahSelect.appendChild(option)
+            })
+        }
 
         // Conditional field logic
         const attendingProgramsRadios = document.querySelectorAll('input[name="attendingPrograms"]')
@@ -1074,11 +1122,21 @@
 
             // Collect form data
             const formData = new FormData(form)
+            const selectedUsrah = formData.get('usrah')
             const gender = formData.get('gender')
             const locations = formData.getAll('usraLocation')
             const onCampus = locations.includes('on-campus') || gender === 'sister'
             const offCampus = locations.includes('off-campus') && gender !== 'sister'
             const campusTimings = formData.getAll('campusTiming')
+
+            // Validate usrah is selected
+            if (!selectedUsrah) {
+                errorMessage.textContent = 'Please select an usrah.'
+                errorMessage.style.display = 'block'
+                submitBtn.disabled = false
+                submitBtn.innerHTML = 'JOIN'
+                return
+            }
 
             // Validate at least one location is selected
             if (!onCampus && !offCampus) {
@@ -1185,7 +1243,7 @@
                 name: formData.get('name'),
                 email: formData.get('email'),
                 phone: formData.get('phone'),
-                usrah_id: null,
+                usrah_id: selectedUsrah,
                 application_notes: combinedNotes,
                 specific_preference: specificPrefText || formData.get('specificPreference') || null,
                 created_at: new Date().toISOString()
@@ -1227,6 +1285,7 @@
         })
 
         // Initial UI + progress
+        loadUsrahs()
         updatePreferencesUI()
         updateProgress()
 
