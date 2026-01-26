@@ -79,7 +79,21 @@
 					<label for="curr5" class="level-label level-5">😄 5</label>
 					</div>
 				</div>
-
+			<div class="form-group">
+				<label for="actionItems">Action Items Completion (1-5) <span class="required">*</span></label>
+				<div class="level-selector">
+					<input type="radio" id="action1" name="actionItems" value="1" required>
+				<label for="action1" class="level-label level-1">😢 1</label>
+				<input type="radio" id="action2" name="actionItems" value="2">
+				<label for="action2" class="level-label level-2">😐 2</label>
+				<input type="radio" id="action3" name="actionItems" value="3">
+				<label for="action3" class="level-label level-3">🙂 3</label>
+				<input type="radio" id="action4" name="actionItems" value="4">
+				<label for="action4" class="level-label level-4">😊 4</label>
+				<input type="radio" id="action5" name="actionItems" value="5">
+				<label for="action5" class="level-label level-5">😄 5</label>
+				</div>
+			</div>
 				<div id="attendeesContainer" style="display: none;">
 					<div class="section-header" style="margin-top: 30px;">Mark Attendance</div>
 					<div id="attendeesList"></div>
@@ -184,10 +198,10 @@
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
-			gap: 6px;
-			min-width: 65px;
+			gap: 4px;
+			min-width: 60px;
 			height: 45px;
-			padding: 0 12px;
+			padding: 0 10px;
 			background: rgba(15, 23, 42, 0.6);
 			border: 2px solid rgba(148, 163, 184, 0.3);
 			border-radius: 6px;
@@ -421,6 +435,18 @@
 			.submit-button {
 				padding: 16px 30px;
 			}
+
+			.level-selector {
+				gap: 8px;
+			}
+
+			.level-label {
+				min-width: 55px;
+				padding: 0 8px;
+				gap: 3px;
+				font-size: 13px;
+				height: 42px;
+			}
 		}
 	</style>
 
@@ -514,44 +540,52 @@
 				const date = document.getElementById('attendanceDate').value;
 				const brotherhoodLevel = document.querySelector('input[name="brotherhoodLevel"]:checked')?.value;
 				const curriculumProgress = document.querySelector('input[name="curriculumProgress"]:checked')?.value;
-				const selectedAttendees = Array.from(document.querySelectorAll('input[name="attendees"]:checked')).map(cb => cb.value);
+			const actionItems = document.querySelector('input[name="actionItems"]:checked')?.value;
+			const selectedAttendees = Array.from(document.querySelectorAll('input[name="attendees"]:checked')).map(cb => cb.value);
 
-				if (!usrahId || !date || !brotherhoodLevel || !curriculumProgress) {
-					errorMessage.textContent = 'Please fill in all required fields.';
-					errorMessage.style.display = 'block';
-					return;
-				}
+			if (!usrahId || !date || !brotherhoodLevel || !curriculumProgress || !actionItems) {
+				errorMessage.textContent = 'Please fill in all required fields.';
+				errorMessage.style.display = 'block';
+				successMessage.style.display = 'none';
+				errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				return;
+			}
 
-				try {
-					// Insert attendance record
-					const { error } = await supabase.from('attendance').insert([{
-						usrah_id: usrahId,
-						attendance_date: date,
-						attendee_ids: selectedAttendees,
-						brotherhood_level: parseInt(brotherhoodLevel),
-						curriculum_progress: parseInt(curriculumProgress)
-					}]);
+			try {
+				// Insert attendance record
+				const { error } = await supabase.from('attendance').insert([{
+					usrah_id: usrahId,
+					attendance_date: date,
+					attendee_ids: selectedAttendees,
+					brotherhood_level: parseInt(brotherhoodLevel),
+					curriculum_progress: parseInt(curriculumProgress),
+					action_items: parseInt(actionItems)
+				}]);
 
-					if (error) throw error;
+				if (error) throw error;
 
-					successMessage.style.display = 'block';
-					errorMessage.style.display = 'none';
-					form.reset();
-					attendeesContainer.style.display = 'none';
+				successMessage.style.display = 'block';
+				errorMessage.style.display = 'none';
+				successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				form.reset();
+				attendeesContainer.style.display = 'none';
 
-					setTimeout(() => {
-						window.location.href = 'index.html';
-					}, 3000);
-				} catch (err) {
-					console.error('Error submitting attendance:', err);
-					errorMessage.textContent = 'Error submitting attendance. Please try again.';
-					errorMessage.style.display = 'block';
-				}
-			});
+				setTimeout(() => {
+					window.location.href = 'index.html';
+				}, 3000);
+			} catch (err) {
+				console.error('Error submitting attendance:', err);
+				const errorMsg = err.message || 'Error submitting attendance. Please try again.';
+				errorMessage.textContent = errorMsg;
+				errorMessage.style.display = 'block';
+				successMessage.style.display = 'none';
+				errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}
+		});
 
-			// Initialize
-			loadUsrahs();
-			loadPeople();
+		// Initialize
+		loadUsrahs();
+		loadPeople();
 		}
 
 		// Initialize when DOM is ready
