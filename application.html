@@ -979,11 +979,15 @@
                 usrahSelect.required = !!onCampus
             }
             
-            // Show schedule field if 'none' is selected
+            // Show schedule field logic
+            // If both on-campus and off-campus are selected, only show off-campus schedule (avoid duplication)
+            // If only on-campus is selected and 'none' is chosen, show on-campus schedule
+            // If only off-campus is selected, show off-campus schedule
             if (onCampus && usrahSelect) {
                 const selectedValue = usrahSelect.value
                 if (onCampusSchedule) {
-                    onCampusSchedule.style.display = (selectedValue === 'none') ? '' : 'none'
+                    // Only show on-campus schedule if 'none' is selected AND off-campus is NOT selected
+                    onCampusSchedule.style.display = (selectedValue === 'none' && !offCampus) ? '' : 'none'
                 }
             } else if (onCampusSchedule) {
                 onCampusSchedule.style.display = 'none'
@@ -1151,7 +1155,8 @@
             if (onCampus && selectedUsrah) {
                 if (selectedUsrah === 'none') {
                     prefs.push(`Selected Usrah: None of the available usrahs work`)
-                    if (weeklyScheduleOn) prefs.push(`Weekly schedule:\n${weeklyScheduleOn}`)
+                    // Only include on-campus schedule if off-campus is NOT selected (to avoid duplication)
+                    if (weeklyScheduleOn && !offCampus) prefs.push(`Weekly schedule:\n${weeklyScheduleOn}`)
                 } else {
                     prefs.push(`Selected Usrah: ${selectedUsrah}`)
                 }
