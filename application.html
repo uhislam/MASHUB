@@ -726,15 +726,6 @@
 
                 <p class="muted" style="margin-bottom:12px;">This helps us place you with the best-fit usra.</p>
 
-                <!-- Available Usrahs -->
-                <div class="form-group">
-                    <label for="usrahSelect">Available Usrahs <span class="required">*</span></label>
-                    <select id="usrahSelect" name="usrah" required>
-                        <option value="">Loading usrahs...</option>
-                    </select>
-                    <div id="usrahStatus" class="muted" style="margin-top: 8px;"></div>
-                </div>
-
                 <!-- Usra Preference first -->
                 <div class="form-group" id="usraPreferenceGroup">
                     <label>Usra Preference <span class="required">*</span></label>
@@ -748,35 +739,19 @@
                     </div>
                 </div>
 
-                <!-- On-campus options: timings + conditional schedule/upload when Other is selected -->
+                <!-- On-campus options: Available Usrahs -->
                 <div id="onCampusOptions" style="display:none;">
                     <div class="form-group">
-                        <label>Which of the following timings work for you? (Select all that apply)</label>
-                        <div id="timings-brother" class="radio-group" style="display:none; margin-top:8px; flex-direction: column; gap: 8px;">
-                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Tuesday 1-2PM"> Tuesday 1-2PM</label>
-                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Tuesday 4-5PM"> Tuesday 4-5PM</label>
-                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Thursday 12-1pm"> Thursday 12-1pm</label>
-                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Wednesday 3-4pm"> Wednesday 3-4pm</label>
-                        </div>
-                        <div id="timings-sister" class="radio-group" style="display:none; margin-top:8px; flex-direction: column; gap: 8px;">
-                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Tuesday 1-2pm"> Tuesday 1-2pm</label>
-                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Tuesday 4-5pm"> Tuesday 4-5pm</label>
-                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Thursday 4-5pm"> Thursday 4-5pm</label>
-                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="Thursday 12-1pm"> Thursday 12-1pm</label>
-                        </div>
-                        <div class="radio-group" style="margin-top:8px;">
-                            <label class="radio-label"><input type="checkbox" name="campusTiming" value="other"> Other (None of the above work)</label>
-                        </div>
+                        <label for="usrahSelect">Available Usrahs <span class="required">*</span></label>
+                        <select id="usrahSelect" name="usrah" required>
+                            <option value="">Loading usrahs...</option>
+                        </select>
+                        <div id="usrahStatus" class="muted" style="margin-top: 8px;"></div>
                     </div>
-
+                    
                     <div id="onCampusSchedule" class="form-group" style="display:none;">
                         <label for="classScheduleOn">Weekly Schedule</label>
-                        <textarea id="classScheduleOn" name="classScheduleOn" placeholder="Type your weekly schedule or upload below (optional)" rows="4"></textarea>
-                        <label class="upload-label" for="scheduleUpload" style="display:inline-flex; align-items:center; gap:8px; padding:10px 14px; background:#0f1b2f; border:1px solid rgba(148,163,184,0.3); border-radius:10px; cursor:pointer; margin-top:8px; color:#e2e8f0;">
-                            <span style="font-weight:600;">Upload schedule (optional)</span>
-                            <span style="font-size:12px; color:#94a3b8;">PDF, DOC, JPG, PNG</span>
-                        </label>
-                        <input type="file" id="scheduleUpload" name="scheduleUpload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;">
+                        <textarea id="classScheduleOn" name="classScheduleOn" placeholder="Type your weekly schedule (optional)" rows="4"></textarea>
                     </div>
                 </div>
 
@@ -883,13 +858,12 @@
         const successMessage = document.getElementById('successMessage')
         const errorMessage = document.getElementById('errorMessage')
         const progressBar = document.getElementById('progressBar')
-        const scheduleUpload = document.getElementById('scheduleUpload')
-        const uploadLabel = document.querySelector('label.upload-label')
         const usrahSelect = document.getElementById('usrahSelect')
         const usrahStatus = document.getElementById('usrahStatus')
 
         // Store loaded usrahs
         let allUsrahs = []
+        let lastGender = null
 
         // Load usrahs on page load
         async function loadUsrahs() {
@@ -916,13 +890,30 @@
         }
 
         function populateUsrahDropdown() {
+            const formData = new FormData(form)
+            const selectedGender = formData.get('gender')
+            
             usrahSelect.innerHTML = '<option value="">-- Select an Usrah --</option>'
-            allUsrahs.forEach(usrah => {
+            
+            // Filter usrahs by gender
+            const filteredUsrahs = allUsrahs.filter(usrah => {
+                if (!selectedGender) return true // Show all if no gender selected
+                if (!usrah.gender) return true // Show usrahs without gender set
+                return usrah.gender.toLowerCase() === selectedGender.toLowerCase()
+            })
+            
+            filteredUsrahs.forEach(usrah => {
                 const option = document.createElement('option')
                 option.value = usrah.usrah_id
                 option.textContent = `${usrah.usrah_id} - ${usrah.usrah_name}`
                 usrahSelect.appendChild(option)
             })
+            
+            // Add 'none of these work' option
+            const noneOption = document.createElement('option')
+            noneOption.value = 'none'
+            noneOption.textContent = 'None of these work for me'
+            usrahSelect.appendChild(noneOption)
         }
 
         // Conditional field logic
@@ -973,46 +964,43 @@
             const onCampusOptions = document.getElementById('onCampusOptions')
             const onCampusSchedule = document.getElementById('onCampusSchedule')
             const offCampusSchedule = document.getElementById('offCampusSchedule')
-            const timingsBrother = document.getElementById('timings-brother')
-            const timingsSister = document.getElementById('timings-sister')
             const localMasjidOff = document.getElementById('localMasjidOff')
+            const usrahSelect = document.getElementById('usrahSelect')
 
             // Reset visibility
             onCampusOptions.style.display = onCampus ? '' : 'none'
             offCampusSchedule.style.display = offCampus ? '' : 'none'
+            
             if (localMasjidOff) {
                 localMasjidOff.required = !!offCampus
             }
-            if (!onCampus) {
+            
+            if (usrahSelect) {
+                usrahSelect.required = !!onCampus
+            }
+            
+            // Show schedule field if 'none' is selected
+            if (onCampus && usrahSelect) {
+                const selectedValue = usrahSelect.value
+                if (onCampusSchedule) {
+                    onCampusSchedule.style.display = (selectedValue === 'none') ? '' : 'none'
+                }
+            } else if (onCampusSchedule) {
                 onCampusSchedule.style.display = 'none'
             }
-
-            // Handle timing options by gender when on-campus
-            const timingCheckboxes = Array.from(document.querySelectorAll('input[name="campusTiming"]'))
-            timingCheckboxes.forEach(box => box.required = false)
-
-            if (onCampus) {
-                // Show group by gender
-                if (gender === 'brother') {
-                    timingsBrother.style.display = ''
-                    timingsSister.style.display = 'none'
-                } else if (gender === 'sister') {
-                    timingsBrother.style.display = 'none'
-                    timingsSister.style.display = ''
-                } else {
-                    // No gender selected yet
-                    timingsBrother.style.display = 'none'
-                    timingsSister.style.display = 'none'
+            
+            // Repopulate dropdown only when gender changes to filter usrahs
+            if (gender !== lastGender) {
+                const currentSelection = usrahSelect ? usrahSelect.value : ''
+                populateUsrahDropdown()
+                // Try to restore selection if it's still valid
+                if (currentSelection && usrahSelect) {
+                    const optionExists = Array.from(usrahSelect.options).some(opt => opt.value === currentSelection)
+                    if (optionExists) {
+                        usrahSelect.value = currentSelection
+                    }
                 }
-
-                const selectedTimings = formData.getAll('campusTiming')
-                // Show on-campus schedule+upload only if Other is selected
-                onCampusSchedule.style.display = selectedTimings.includes('other') ? '' : 'none'
-            }
-
-            // Upload label only relevant when on-campus and Other is selected
-            if (uploadLabel) {
-                uploadLabel.style.display = (onCampus && (new FormData(form).getAll('campusTiming').includes('other'))) ? 'inline-flex' : 'none'
+                lastGender = gender
             }
         }
 
@@ -1021,9 +1009,7 @@
             const formData = new FormData(form)
             const gender = formData.get('gender')
             const locations = formData.getAll('usraLocation')
-            const onCampus = locations.includes('on-campus') || gender === 'sister'
-            const timingCheckboxes = Array.from(form.querySelectorAll('input[name="campusTiming"]'))
-            const timingSelected = timingCheckboxes.some(cb => cb.checked)
+            const onCampus = locations.includes('on-campus')
 
             // Adjust for radio groups (counted multiple times)
             const radioGroups = new Set()
@@ -1069,14 +1055,6 @@
                 }
             })
 
-            // Custom requirement: at least one on-campus timing when applicable
-            if (onCampus && (gender === 'brother' || gender === 'sister')) {
-                totalRequired += 1
-                if (timingSelected) {
-                    completed += 1
-                }
-            }
-
             const progress = totalRequired > 0 ? (completed / totalRequired) * 100 : 0
             progressBar.style.width = progress + '%'
         }
@@ -1087,19 +1065,11 @@
 
         // Update preferences UI on relevant changes
         form.addEventListener('change', (e) => {
-            if (e.target && (e.target.name === 'gender' || e.target.name === 'usraLocation' || e.target.name === 'campusTiming')) {
+            if (e.target && (e.target.name === 'gender' || e.target.name === 'usraLocation' || e.target.name === 'usrah')) {
                 updatePreferencesUI()
                 updateProgress()
             }
         })
-
-        // File upload label feedback
-        if (scheduleUpload && uploadLabel) {
-            scheduleUpload.addEventListener('change', () => {
-                const file = scheduleUpload.files && scheduleUpload.files[0]
-                uploadLabel.querySelector('span').textContent = file ? file.name : 'Upload schedule (optional)'
-            })
-        }
 
         // Form submission -> insert into people table
         form.addEventListener('submit', async (e) => {
@@ -1116,18 +1086,8 @@
             const selectedUsrah = formData.get('usrah')
             const gender = formData.get('gender')
             const locations = formData.getAll('usraLocation')
-            const onCampus = locations.includes('on-campus') || gender === 'sister'
-            const offCampus = locations.includes('off-campus') && gender !== 'sister'
-            const campusTimings = formData.getAll('campusTiming')
-
-            // Validate usrah is selected
-            if (!selectedUsrah) {
-                errorMessage.textContent = 'Please select an usrah.'
-                errorMessage.style.display = 'block'
-                submitBtn.disabled = false
-                submitBtn.innerHTML = 'JOIN'
-                return
-            }
+            const onCampus = locations.includes('on-campus')
+            const offCampus = locations.includes('off-campus')
 
             // Validate at least one location is selected
             if (!onCampus && !offCampus) {
@@ -1138,13 +1098,13 @@
                 return;
             }
 
-            // Validate at least one timing when on-campus is selected
-            if (onCampus && (gender === 'brother' || gender === 'sister') && campusTimings.length === 0) {
-                errorMessage.textContent = 'Please select at least one timing for on-campus availability.'
-                errorMessage.style.display = 'block'
-                submitBtn.disabled = false
-                submitBtn.innerHTML = 'JOIN'
-                return
+            // Validate usrah is selected when on-campus is selected (allow 'none')
+            if (onCampus && !selectedUsrah) {
+                errorMessage.textContent = 'Please select an usrah for on-campus.';
+                errorMessage.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'JOIN';
+                return;
             }
             
             // Combine all long-answer questions into one text field with double line breaks
@@ -1175,40 +1135,12 @@
             const combinedNotes = longAnswers.join('\n\n')
             
             const personId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2,8)}`
-            let scheduleFileUrl = null
-            const scheduleFile = scheduleUpload?.files?.[0]
-            if (scheduleFile) {
-                const maxSize = 5 * 1024 * 1024 // 5MB limit
-                const allowed = [
-                    'application/pdf',
-                    'application/msword',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'image/jpeg',
-                    'image/png'
-                ]
-                if (scheduleFile.size > maxSize) throw new Error('File too large (max 5MB)')
-                if (scheduleFile.type && !allowed.includes(scheduleFile.type)) throw new Error('Unsupported file type')
-
-                const path = `schedules/${personId}-${Date.now()}-${scheduleFile.name}`
-                const upload = await supabase.storage
-                    .from('usrah-schedules')
-                    .upload(path, scheduleFile, {
-                        cacheControl: '3600',
-                        upsert: true,
-                        contentType: scheduleFile.type || 'application/octet-stream'
-                    })
-                if (upload.error) throw upload.error
-
-                const { data: publicData } = supabase.storage
-                    .from('usrah-schedules')
-                    .getPublicUrl(path)
-                scheduleFileUrl = publicData?.publicUrl || null
-            }
             
             // Build specific preference details string (consolidates all Preferences inputs)
             const weeklyScheduleOn = formData.get('classScheduleOn')
             const weeklyScheduleOff = formData.get('classScheduleOff')
             const localMasjidOffVal = formData.get('localMasjidOff')
+            const specificPrefInput = formData.get('specificPreference')
 
             const prefs = []
             const selectedLocations = []
@@ -1216,17 +1148,19 @@
             if (offCampus) selectedLocations.push('Off Campus')
             if (selectedLocations.length) prefs.push(`Usra Preference: ${selectedLocations.join(' and ')}`)
             
-            if (onCampus) {
-                if (campusTimings.length) prefs.push(`On-campus timing(s): ${campusTimings.map(t => t.toUpperCase()).join(', ')}`)
-                if (campusTimings.includes('other')) {
-                    if (weeklyScheduleOn) prefs.push(`Weekly schedule (typed):\n${weeklyScheduleOn}`)
-                    if (scheduleFileUrl) prefs.push(`Weekly schedule (upload): ${scheduleFileUrl}`)
+            if (onCampus && selectedUsrah) {
+                if (selectedUsrah === 'none') {
+                    prefs.push(`Selected Usrah: None of the available usrahs work`)
+                    if (weeklyScheduleOn) prefs.push(`Weekly schedule:\n${weeklyScheduleOn}`)
+                } else {
+                    prefs.push(`Selected Usrah: ${selectedUsrah}`)
                 }
             }
             if (offCampus) {
                 if (localMasjidOffVal) prefs.push(`Local masjid: ${localMasjidOffVal}`)
                 if (weeklyScheduleOff) prefs.push(`Weekly schedule:\n${weeklyScheduleOff}`)
             }
+            if (specificPrefInput) prefs.push(`Specific preference: ${specificPrefInput}`)
             const specificPrefText = prefs.join('\n\n') || null
 
             const personData = {
@@ -1234,9 +1168,9 @@
                 name: formData.get('name'),
                 email: formData.get('email'),
                 phone: formData.get('phone'),
-                usrah_id: selectedUsrah,
+                usrah_id: (selectedUsrah === 'none') ? null : selectedUsrah,
                 application_notes: combinedNotes,
-                specific_preference: specificPrefText || formData.get('specificPreference') || null,
+                specific_preference: specificPrefText,
                 created_at: new Date().toISOString()
             }
 
