@@ -129,6 +129,28 @@
 			color: #ef4444;
 		}
 
+		.gender-badge {
+			display: inline-block;
+			padding: 4px 10px;
+			border-radius: 4px;
+			font-size: 12px;
+			font-weight: 600;
+			text-transform: uppercase;
+			margin-left: 10px;
+		}
+
+		.gender-badge.brother {
+			background: rgba(59, 130, 246, 0.2);
+			border: 1px solid rgba(59, 130, 246, 0.5);
+			color: #3b82f6;
+		}
+
+		.gender-badge.sister {
+			background: rgba(236, 72, 153, 0.2);
+			border: 1px solid rgba(236, 72, 153, 0.5);
+			color: #ec4899;
+		}
+
 		#status {
 			text-align: center;
 			padding: 20px;
@@ -236,10 +258,18 @@
 				const memberCount = members.length;
 				const capacityClass = memberCount <= 3 ? 'low' : memberCount <= 6 ? 'medium' : 'high';
 
-				html.push(`
-					<div class="usrah-group">
-						<div class="group-header">
-							<h2 class="group-title">${usrahId}<br><span style="font-size: 0.8em; color: #94a3b8;">${usrahName}</span></h2>
+					const genderClass = usrahInfo?.gender?.toLowerCase() || '';
+					let titleColor = '#4ade80'; // default green
+					if (genderClass === 'brother') {
+						titleColor = '#3b82f6'; // blue
+					} else if (genderClass === 'sister') {
+						titleColor = '#ec4899'; // pink
+					}
+
+					html.push(`
+						<div class="usrah-group">
+							<div class="group-header">
+								<h2 class="group-title" style="color: ${titleColor};">${usrahId}<br><span style="font-size: 0.8em; color: #94a3b8;">${usrahName}</span></h2>
 							<span class="group-count ${capacityClass}">${memberCount}/10 members</span>
 							</div>
 							<div class="members-list">

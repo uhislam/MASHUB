@@ -964,20 +964,11 @@
             const gender = formData.get('gender')
             const locations = formData.getAll('usraLocation')
 
-            // If Sister, force on-campus and hide the preference question
             const usraGroup = document.getElementById('usraPreferenceGroup')
-            const onCheckbox = form.querySelector('input[name="usraLocation"][value="on-campus"]')
-            const offCheckbox = form.querySelector('input[name="usraLocation"][value="off-campus"]')
-            if (gender === 'sister') {
-                if (onCheckbox) onCheckbox.checked = true
-                if (offCheckbox) offCheckbox.checked = false
-                if (usraGroup) usraGroup.style.display = 'none'
-            } else {
-                if (usraGroup) usraGroup.style.display = ''
-            }
+            if (usraGroup) usraGroup.style.display = ''
 
-            const onCampus = locations.includes('on-campus') || gender === 'sister'
-            const offCampus = locations.includes('off-campus') && gender !== 'sister'
+            const onCampus = locations.includes('on-campus')
+            const offCampus = locations.includes('off-campus')
 
             const onCampusOptions = document.getElementById('onCampusOptions')
             const onCampusSchedule = document.getElementById('onCampusSchedule')
